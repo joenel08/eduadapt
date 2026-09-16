@@ -5,6 +5,15 @@
 
 @push('styles')
 <style>
+/* ===== OVERVIEW GRID ===== */
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+    width: 100%;
+}
+
 /* ===== CHARTS ===== */
 .charts-grid {
     display: grid;
@@ -103,6 +112,10 @@
 
 @media (max-width: 768px) {
 
+    .overview-grid {
+        grid-template-columns: 1fr;
+    }
+
     .chart-container {
         padding: 18px;
         min-height: 430px;
@@ -159,7 +172,7 @@
             <div class="card-label">Total Students</div>
             <div class="card-value">{{ $totalStudents }}</div>
         </div>
-        <div class="overview-card">
+        <!-- <div class="overview-card">
             <div class="card-icon orange"><i class="fas fa-chart-line"></i></div>
             <div class="card-label">Average Score</div>
             <div class="card-value">
@@ -170,12 +183,12 @@
                 @endphp
                 {{ $avg }}%
             </div>
-        </div>
-        <div class="overview-card">
+        </div> -->
+        <!-- <div class="overview-card">
             <div class="card-icon red"><i class="fas fa-hourglass-end"></i></div>
             <div class="card-label">Pending Requests</div>
             <div class="card-value">0</div>
-        </div>
+        </div> -->
     </div>
 
     <!-- CHARTS SECTION -->

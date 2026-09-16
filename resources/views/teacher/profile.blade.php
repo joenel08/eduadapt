@@ -277,9 +277,17 @@
 @section('content')
 
 <!-- Page Header -->
-<div class="page-header">
+<!-- <div class="page-header">
     <h1><i class="fas fa-cog"></i> Settings</h1>
     <p>Manage your profile and security settings</p>
+</div> -->
+
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
+    <div>
+        <h1 style="font-size:28px;font-weight:700;">Settings</h1>
+        <p style="color:#999;">Manage your profile and security settings</p>
+    </div>
+   
 </div>
 
 <!-- Tabs -->
@@ -328,36 +336,35 @@
                 </div>
             </div>
 
-            <form id="profileForm" action="{{ route('teacher.profile.update') }}" method="POST">
+            <!-- <form id="profileForm" action="{{ route('teacher.profile.update') }}" method="POST">
                 @csrf
-                @method('PUT')
+                @method('PUT') -->
 
                 <div class="form-group">
                     <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" name="name" value="{{ old('name', $user->name ?? '') }}" placeholder="Enter full name">
-                    @error('name') <span class="text-danger">{{ $message }}</span> @enderror
+                    <input type="text" id="fullName" readonly value="{{ old('name', $fullName) }}" placeholder="Full name">
                 </div>
 
                 <div class="form-group">
                     <label for="employeeId">Employee ID</label>
-                    <input type="text" id="employeeId" name="employee_id" value="{{ old('employee_id', $teacher->employee_id ?? '') }}" placeholder="Employee ID">
+                    <input type="text" id="employeeId" readonly name="employee_id" value="{{ old('employee_id', $teacher->employee_id ?? '') }}" placeholder="Employee ID">
                     @error('employee_id') <span class="text-danger">{{ $message }}</span> @enderror
                 </div>
 
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <label for="email">Email Address</label>
                     <input type="email" id="email" name="email" value="{{ old('email', $user->email ?? '') }}" placeholder="Email" readonly style="background:#f5f5f5;">
-                </div>
+                </div> -->
 
-                <div class="button-group">
+                <!-- <div class="button-group">
                     <button type="submit" class="btn btn-save">
                         <i class="fas fa-save"></i> Save Changes
                     </button>
                     <button type="reset" class="btn btn-cancel">
                         <i class="fas fa-redo"></i> Reset
                     </button>
-                </div>
-            </form>
+                </div> -->
+            <!-- </form> -->
         </div>
     </div>
 
@@ -557,11 +564,11 @@
         })();
     @endif
 
-    @if($errors - > any())
+    @if($errors -> any())
         (function() {
             const alert = document.getElementById('profileAlert') || document.getElementById('passwordAlert');
             if (alert) {
-                const errors = @json($errors - > all());
+                const errors = @json($errors -> all());
                 alert.className = 'alert error show';
                 alert.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + errors.join('<br>');
                 setTimeout(() => alert.classList.remove('show'), 6000);

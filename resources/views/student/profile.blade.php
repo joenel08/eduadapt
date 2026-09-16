@@ -300,10 +300,13 @@
 
 @section('content')
 
-    <div class="page-header">
-        <h1><i class="fas fa-sliders"></i> Settings</h1>
-        <p>Manage your account and preferences</p>
+   <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
+    <div>
+        <h1 style="font-size:28px;font-weight:700;">Settings</h1>
+        <p style="color:#999;">Manage your profile and security settings</p>
     </div>
+   
+</div>
 
     <div id="alertContainer"></div>
 
@@ -352,43 +355,43 @@
                     </div>
                 </div>
 
-                <form id="profileForm" action="{{ route('student.profile.update') }}" method="POST">
+                <!-- <form id="profileForm" action="{{ route('student.profile.update') }}" method="POST">
                     @csrf
-                    @method('PUT')
+                    @method('PUT') -->
 
                     <div class="form-group">
                         <label for="firstName">First Name</label>
-                        <input type="text" id="firstName" name="first_name" value="{{ old('first_name', $student->first_name ?? '') }}" placeholder="Enter first name">
+                        <input type="text" id="firstName" readonly name="first_name" value="{{ old('first_name', $student->first_name ?? '') }}" placeholder="Enter first name">
                         @error('first_name') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="lastName">Last Name</label>
-                        <input type="text" id="lastName" name="last_name" value="{{ old('last_name', $student->last_name ?? '') }}" placeholder="Enter last name">
+                        <input type="text" id="lastName" readonly name="last_name" value="{{ old('last_name', $student->last_name ?? '') }}" placeholder="Enter last name">
                         @error('last_name') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="form-group">
                         <label for="lrn">LRN (Learner Reference Number)</label>
-                        <input type="text" id="lrn" name="lrn" value="{{ old('lrn', $student->lrn ?? '') }}" placeholder="Enter 12-digit LRN" maxlength="12">
+                        <input type="text" id="lrn" readonly name="lrn" value="{{ old('lrn', $student->lrn ?? '') }}" placeholder="Enter 12-digit LRN" maxlength="12">
                         @error('lrn') <span class="text-danger">{{ $message }}</span> @enderror
                         <div style="font-size: 13px; color: #999; margin-top: 5px;">Your LRN is used for verification</div>
                     </div>
 
-                    <div class="form-group">
+                    <!-- <div class="form-group">
                         <label for="email">Email Address</label>
                         <input type="email" id="email" value="{{ $user->email ?? '' }}" readonly style="background:#f5f5f5;">
-                    </div>
+                    </div> -->
 
-                    <div class="button-group">
+                    <!-- <div class="button-group">
                         <button type="submit" class="btn btn-save">
                             <i class="fas fa-save"></i> Save Changes
                         </button>
                         <button type="reset" class="btn btn-cancel">
                             <i class="fas fa-redo"></i> Reset
                         </button>
-                    </div>
-                </form>
+                    </div> -->
+                <!-- </form> -->
             </div>
         </div>
 

@@ -14,10 +14,10 @@
     </div>
 
     <!-- SECTION 1: SUMMARY CARDS -->
-    <div style="margin-bottom: 40px;">
+    <!-- <div style="margin-bottom: 40px;">
         <h2 class="section-header">Summary Metrics</h2>
         <div class="summary-cards">
-            <!-- Card 1: Overall Average Score -->
+    
             <div class="summary-card score">
                 <div class="summary-card-icon"><i class="fas fa-star"></i></div>
                 <div class="summary-card-label">Overall Average Score</div>
@@ -26,7 +26,7 @@
                     <i class="fas fa-arrow-up"></i> <span id="scoreChange">+{{ $summary->improvement }}%</span> improvement
                 </div>
             </div>
-            <!-- Card 2: Completion Rate -->
+          
             <div class="summary-card completion">
                 <div class="summary-card-icon"><i class="fas fa-check-circle"></i></div>
                 <div class="summary-card-label">Completion Rate</div>
@@ -35,7 +35,7 @@
                     <i class="fas fa-arrow-up"></i> <span id="completionChange">{{ $summary->completionRate }}%</span> of students assessed
                 </div>
             </div>
-            <!-- Card 3: Average Improvement -->
+          
             <div class="summary-card improvement">
                 <div class="summary-card-icon"><i class="fas fa-chart-bar"></i></div>
                 <div class="summary-card-label">Average Improvement</div>
@@ -45,7 +45,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- SECTION 2: VISUAL REPORTS -->
     <div>
@@ -288,7 +288,7 @@
 
     // ============ PAGE INITIALIZATION ============
     document.addEventListener('DOMContentLoaded', function() {
-        updateSummaryCards();
+        // updateSummaryCards();
         initializeCharts();
     });
 

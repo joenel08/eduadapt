@@ -8,10 +8,6 @@ let interventionVideos = { basic: [], standard: [], advanced: [] };
 let interventionQuizzes = { basic: [], standard: [], advanced: [] };
 let quizUploadData = { questions: [], fileName: '', examType: '' };
 
-// ✅ NEW — titles per level for materials and videos
-let interventionVideoTitles = { basic: '', standard: '', advanced: '' };
-let interventionMaterialTitles = { basic: '', standard: '', advanced: '' };
-
 // -------- Core helpers --------
 function getWeekContent() {
     return window.__contentState?.weekContent || {};
@@ -44,7 +40,6 @@ function safeUpdateRandomization(prefix, examType) {
 // ============ HYDRATE FROM WEEK CONTENT ============
 window.hydrateInterventionFromCurrentWeek = function () {
     const emptyBuckets = () => ({ basic: [], standard: [], advanced: [] });
-    const emptyTitles = () => ({ basic: '', standard: '', advanced: '' });   // ✅ NEW
     const ck = getCurrentContentKey();
     const weekContent = getWeekContent();
     const inv = ck && weekContent[ck] && weekContent[ck].intervention;
@@ -52,15 +47,10 @@ window.hydrateInterventionFromCurrentWeek = function () {
         interventionMaterials = inv.materials ? JSON.parse(JSON.stringify(inv.materials)) : emptyBuckets();
         interventionVideos = inv.videos ? JSON.parse(JSON.stringify(inv.videos)) : emptyBuckets();
         interventionQuizzes = inv.quizzes ? JSON.parse(JSON.stringify(inv.quizzes)) : emptyBuckets();
-        // ✅ NEW — hydrate titles
-        interventionVideoTitles = inv.videoTitles ? JSON.parse(JSON.stringify(inv.videoTitles)) : emptyTitles();
-        interventionMaterialTitles = inv.materialTitles ? JSON.parse(JSON.stringify(inv.materialTitles)) : emptyTitles();
     } else {
         interventionMaterials = emptyBuckets();
         interventionVideos = emptyBuckets();
         interventionQuizzes = emptyBuckets();
-        interventionVideoTitles = emptyTitles();          // ✅ NEW
-        interventionMaterialTitles = emptyTitles();       // ✅ NEW
     }
 };
 
@@ -82,23 +72,10 @@ window.switchContent = function (type) {
         document.querySelectorAll('.intervention-btn-item')[2].classList.add('active');
     }
 };
-
-// ✅ CHANGED — sync title inputs when switching level
 window.loadInterventionLevel = function () {
     currentInterventionLevel = document.getElementById('interventionLevel').value;
     updateInterventionDisplay();
-
-    const videoTitleInput = document.getElementById('interventionVideoTitle');
-    if (videoTitleInput) {
-        videoTitleInput.value = interventionVideoTitles[currentInterventionLevel] || '';
-    }
-
-    const materialTitleInput = document.getElementById('interventionMaterialTitle');
-    if (materialTitleInput) {
-        materialTitleInput.value = interventionMaterialTitles[currentInterventionLevel] || '';
-    }
 };
-
 window.updateInterventionDisplay = function () {
     displayMaterials();
     displayVideos();
@@ -171,7 +148,7 @@ window.addInterventionQuiz = function () {
         shuffleChoices: payload.shuffleChoices,
         shuffle: payload.shuffleQuestions,
         fileName: payload.fileName,
-        timer: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+        timer: `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`
     };
     interventionQuizzes[currentInterventionLevel].push(quizInfo);
     displayQuizzes();
@@ -200,7 +177,7 @@ window.displayMaterials = function () {
     materials.forEach((material, index) => {
         html += `
             <tr>
-                <td style="padding:8px;">${index + 1}</td>
+                <td style="padding:8px;">${index+1}</td>
                 <td style="padding:8px;">${window.escapeHtml(material)}</td>
                 <td style="padding:8px; text-align:right;">
                     <button class="btn-edit btn-primary" type="button" onclick="openEditMaterial(${index})" title="Edit"><i class="fas fa-pen"></i></button>
@@ -223,7 +200,7 @@ window.displayVideos = function () {
         const isLink = video.includes('http') || video.includes('youtube');
         html += `
             <tr>
-                <td style="padding:8px;">${index + 1}</td>
+                <td style="padding:8px;">${index+1}</td>
                 <td style="padding:8px;">${window.escapeHtml(video)}</td>
                 <td style="padding:8px; text-align:right;">
                     <button class="btn-edit" type="button" onclick="openEditVideo(${index})" title="Edit"><i class="fas fa-pen"></i></button>
@@ -249,7 +226,7 @@ window.displayQuizzes = function () {
         const methodLabel = quiz.inputMethod === 'manual' ? 'Manual' : 'Upload';
         html += `
             <tr>
-                <td style="padding:8px;">${index + 1}</td>
+                <td style="padding:8px;">${index+1}</td>
                 <td style="padding:8px;">${count} ${countLabel}, ${typeLabel}, ${methodLabel} - ${quiz.timer}${quiz.shuffleQuestions ? ' • Shuffled' : ''}</td>
                 <td style="padding:8px; text-align:right;">
                     <button class="btn-edit" type="button" onclick="openEditQuiz(${index})" title="Edit"><i class="fas fa-pen"></i></button>
@@ -314,10 +291,10 @@ window.saveEditedVideo = function () {
         closeModal('editVideoModal');
     }
 };
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     const typeSelect = document.getElementById('editVideoType');
     if (typeSelect) {
-        typeSelect.addEventListener('change', function () {
+        typeSelect.addEventListener('change', function() {
             toggleEditVideoFields(this.value);
         });
     }
@@ -330,6 +307,7 @@ window.openEditQuiz = function (index) {
     const quiz = quizzes[index];
     document.getElementById('editQuizIndex').value = index;
     document.getElementById('editQuizLevel').value = currentInterventionLevel;
+    // Populate fields
     document.getElementById('editQuizExamType').value = quiz.examType || 'multipleChoice';
     document.getElementById('editQuizShuffleQuestions').checked = !!quiz.shuffleQuestions;
     document.getElementById('editQuizShuffleChoices').checked = !!quiz.shuffleChoices;
@@ -337,6 +315,7 @@ window.openEditQuiz = function (index) {
     document.getElementById('editQuizHours').value = parseInt(timerParts[0]) || 0;
     document.getElementById('editQuizMinutes').value = parseInt(timerParts[1]) || 0;
     document.getElementById('editQuizSeconds').value = parseInt(timerParts[2]) || 0;
+    // Render questions
     const container = document.getElementById('editQuizQuestionsContainer');
     container.innerHTML = '';
     if (quiz.questionItems && quiz.questionItems.length) {
@@ -346,10 +325,11 @@ window.openEditQuiz = function (index) {
         } else {
             let html = '';
             for (let i = 0; i < quiz.questionItems.length; i++) {
-                html += buildQuizQuestionHtml(i + 1, quiz.examType, 4, 'editQuiz');
+                html += buildQuizQuestionHtml(i+1, quiz.examType, 4, 'editQuiz');
             }
             container.innerHTML = html;
         }
+        // Populate data
         const questionItems = container.querySelectorAll('.question-item');
         quiz.questionItems.forEach((q, idx) => {
             const item = questionItems[idx];
@@ -361,6 +341,7 @@ window.openEditQuiz = function (index) {
                 typeSelect.value = q.type || 'multipleChoice';
                 window.onQuestionTypeChange(typeSelect, 'editQuiz');
             }
+            // Fill choices etc.
             if (q.type === 'multipleChoice' && q.choices) {
                 const choiceInputs = item.querySelectorAll('.choice-input');
                 q.choices.forEach((choice, ci) => { if (choiceInputs[ci]) choiceInputs[ci].value = choice; });
@@ -385,9 +366,9 @@ window.openEditQuiz = function (index) {
                     const pair = q.pairs[i];
                     const newPair = document.createElement('div');
                     newPair.className = 'matching-pair';
-                    const pairNum = i + 1;
+                    const pairNum = i+1;
                     newPair.dataset.pair = pairNum;
-                    const qNum = idx + 1;
+                    const qNum = idx+1;
                     newPair.innerHTML = `
                         <input type="text" class="matching-left-input" placeholder="Left item" data-q="${qNum}" data-pair="${pairNum}" value="${window.escapeHtml(pair.question || pair.left || '')}">
                         <span>↔</span>
@@ -412,7 +393,7 @@ window.saveEditedQuiz = function () {
     const hours = document.getElementById('editQuizHours').value || 0;
     const minutes = document.getElementById('editQuizMinutes').value || 0;
     const seconds = document.getElementById('editQuizSeconds').value || 0;
-    const timer = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const timer = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
     const container = document.getElementById('editQuizQuestionsContainer');
     const questionItems = container.querySelectorAll('.question-item');
     const questions = [];
@@ -525,15 +506,14 @@ window.saveIntervention = async function () {
         return;
     }
     const levels = ['basic', 'standard', 'advanced'];
+    // Ensure structure
     if (!interventionMaterials || typeof interventionMaterials !== 'object') {
         interventionMaterials = { basic: [], standard: [], advanced: [] };
     }
-    ['basic', 'standard', 'advanced'].forEach(l => {
+    ['basic','standard','advanced'].forEach(l => {
         if (!Array.isArray(interventionMaterials[l])) interventionMaterials[l] = [];
     });
-
-    // ✅ CHANGED — sendPart now accepts `extras` so we can attach a title
-    async function sendPart(endpoint, level, items, transformer, dataKey, extras = {}) {
+    async function sendPart(endpoint, level, items, transformer, dataKey) {
         const safeItems = Array.isArray(items) ? items : [];
         const mappedItems = safeItems.map(transformer);
         const payload = {
@@ -542,7 +522,6 @@ window.saveIntervention = async function () {
             subject: subject,
             week: week,
             level: level,
-            ...extras,                 // ✅ NEW
         };
         payload[dataKey] = mappedItems;
         const res = await fetch(endpoint, {
@@ -561,54 +540,19 @@ window.saveIntervention = async function () {
         }
         return res.json();
     }
-
     try {
-        // Materials — ✅ now sends intervention_title
         for (const level of levels) {
             const items = interventionMaterials[level] || [];
-            await sendPart(
-                '/teacher/content-library/intervention/material',
-                level,
-                items,
-                (f) => ({ file_name: f }),
-                'materials',
-                { intervention_title: interventionMaterialTitles[level] || '' }   // ✅ NEW
-            );
+            await sendPart('/teacher/content-library/intervention/material', level, items, (f) => ({ file_name: f }), 'materials');
         }
-
-        // Videos — ✅ fixed key to `intervention_title`
         for (const level of levels) {
             const items = interventionVideos[level] || [];
-            const payloadItems = items.map(v => ({
+            await sendPart('/teacher/content-library/intervention/video', level, items, (v) => ({
                 video_type: v.includes('http') ? 'link' : 'file',
                 video_url: v.includes('http') ? v : null,
                 file_name: v.includes('http') ? null : v,
-            }));
-
-            await fetch('/teacher/content-library/intervention/video', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    grade_level: grade,
-                    term: quarter,
-                    subject: subject,
-                    week: week,
-                    level: level,
-                    intervention_title: interventionVideoTitles[level] || '',   // ✅ CHANGED key
-                    videos: payloadItems,
-                })
-            }).then(async res => {
-                if (!res.ok) throw new Error(`Failed to save videos for ${level}: ${await res.text()}`);
-                return res.json();
-            });
+            }), 'videos');
         }
-
-        // Quizzes — unchanged
         for (const level of levels) {
             const items = interventionQuizzes[level] || [];
             await sendPart('/teacher/content-library/intervention/quiz', level, items, (q) => ({
@@ -623,7 +567,6 @@ window.saveIntervention = async function () {
                 file_name: q.fileName || null,
             }), 'quizzes');
         }
-
         // Local storage backup
         const ck = getCurrentContentKey();
         const weekContent = getWeekContent();
@@ -637,9 +580,7 @@ window.saveIntervention = async function () {
             quizContent: buildInterventionQuizSummary(),
             materials: interventionMaterials,
             videos: interventionVideos,
-            quizzes: interventionQuizzes,
-            videoTitles: interventionVideoTitles,          // ✅ NEW
-            materialTitles: interventionMaterialTitles,    // ✅ NEW
+            quizzes: interventionQuizzes
         };
         if (window.__contentState) window.__contentState.weekContent = weekContent;
         localStorage.setItem('weekContent', JSON.stringify(weekContent));
@@ -656,7 +597,7 @@ window.saveIntervention = async function () {
 
 // ============ HELPERS ============
 window.getInterventionStatsLabel = function (intervention) {
-    const levels = ['basic', 'standard', 'advanced'];
+    const levels = ['basic','standard','advanced'];
     const totals = levels.reduce((acc, level) => {
         acc.materials += (intervention.materials?.[level] || []).length;
         acc.videos += (intervention.videos?.[level] || []).length;
@@ -666,7 +607,7 @@ window.getInterventionStatsLabel = function (intervention) {
     return `Materials: ${totals.materials}, Videos: ${totals.videos}, Quizzes: ${totals.quizzes}`;
 };
 window.getFirstInterventionFileName = function () {
-    const levels = ['basic', 'standard', 'advanced'];
+    const levels = ['basic','standard','advanced'];
     for (const level of levels) {
         const first = interventionMaterials[level]?.[0];
         if (first) return first;
@@ -674,7 +615,7 @@ window.getFirstInterventionFileName = function () {
     return '';
 };
 window.getFirstInterventionVideoLink = function () {
-    const levels = ['basic', 'standard', 'advanced'];
+    const levels = ['basic','standard','advanced'];
     for (const level of levels) {
         const first = interventionVideos[level]?.find(video => String(video).startsWith('http'));
         if (first) return first;
@@ -682,7 +623,7 @@ window.getFirstInterventionVideoLink = function () {
     return '';
 };
 window.buildInterventionQuizSummary = function () {
-    const levels = ['basic', 'standard', 'advanced'];
+    const levels = ['basic','standard','advanced'];
     const labels = levels.map(level => {
         const quizzes = interventionQuizzes[level] || [];
         if (!quizzes.length) return `${level}: none`;
@@ -877,8 +818,9 @@ function generateMixedQuizQuestionItems(prefix, count, startIndex = 0) {
             <div class="question-input-group">
                 <input type="text" class="question-input" placeholder="Enter question text" data-q="${questionNumber}">
             </div>
+            <!-- Multiple Choice -->
             <div class="choice-inputs" data-q="${questionNumber}" style="display:block;">
-                ${['A', 'B', 'C', 'D'].map((label, ci) => `
+                ${['A','B','C','D'].map((label, ci) => `
                 <div class="choice-input-row">
                     <span>${label}.</span>
                     <input type="text" class="choice-input" placeholder="Choice ${label}" data-q="${questionNumber}" data-choice="${ci}">
@@ -889,6 +831,7 @@ function generateMixedQuizQuestionItems(prefix, count, startIndex = 0) {
                 </div>
                 `).join('')}
             </div>
+            <!-- True/False -->
             <div class="truefalse-inputs" data-q="${questionNumber}" style="display:none;">
                 <div class="question-answer-box">
                     <label>Answer Key</label>
@@ -899,6 +842,7 @@ function generateMixedQuizQuestionItems(prefix, count, startIndex = 0) {
                     </select>
                 </div>
             </div>
+            <!-- Matching Type -->
             <div class="matching-inputs" data-q="${questionNumber}" style="display:none;">
                 <div class="matching-pairs">
                     <div class="matching-pair" data-pair="1">
@@ -946,12 +890,13 @@ window.initializeQuizExamTypeHandlers = function () {
     });
     updateQuizUploadVisibility();
 };
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
+    // Attach handlers after DOM ready
     setTimeout(initializeQuizExamTypeHandlers, 100);
 });
 
 // ============ QUIZ FILE CHANGE ============
-document.getElementById('quizFile')?.addEventListener('change', function () {
+document.getElementById('quizFile')?.addEventListener('change', function() {
     window.handleQuizFileChange();
 });
 window.handleQuizFileChange = function () {
@@ -998,10 +943,6 @@ window.loadInterventionFromServer = async function () {
         interventionMaterials = { basic: [], standard: [], advanced: [] };
         interventionVideos = { basic: [], standard: [], advanced: [] };
         interventionQuizzes = { basic: [], standard: [], advanced: [] };
-        // ✅ NEW — reset titles
-        interventionVideoTitles = { basic: '', standard: '', advanced: '' };
-        interventionMaterialTitles = { basic: '', standard: '', advanced: '' };
-
         for (const { key, url } of endpoints) {
             const res = await fetch(url, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
@@ -1013,20 +954,12 @@ window.loadInterventionFromServer = async function () {
             if (key === 'materials') {
                 items.forEach(item => {
                     if (interventionMaterials[item.level]) interventionMaterials[item.level].push(item.file_name);
-                    // ✅ NEW — grab title from first row of each level
-                    if (!interventionMaterialTitles[item.level] && item.intervention_title) {
-                        interventionMaterialTitles[item.level] = item.intervention_title;
-                    }
                 });
             } else if (key === 'videos') {
                 items.forEach(item => {
                     if (interventionVideos[item.level]) {
                         const video = item.video_type === 'link' ? item.video_url : item.file_name;
                         interventionVideos[item.level].push(video);
-                        // ✅ NEW — grab title from first row of each level
-                        if (!interventionVideoTitles[item.level] && item.intervention_title) {
-                            interventionVideoTitles[item.level] = item.intervention_title;
-                        }
                     }
                 });
             } else if (key === 'quizzes') {
@@ -1034,7 +967,7 @@ window.loadInterventionFromServer = async function () {
                     if (interventionQuizzes[item.level]) {
                         let questions = item.questions;
                         if (typeof questions === 'string') {
-                            try { questions = JSON.parse(questions); } catch (e) { questions = []; }
+                            try { questions = JSON.parse(questions); } catch(e) { questions = []; }
                         }
                         const quiz = {
                             questionItems: questions || [],
@@ -1053,16 +986,6 @@ window.loadInterventionFromServer = async function () {
             }
         }
         updateInterventionDisplay();
-
-        // ✅ NEW — reflect loaded titles in the inputs
-        const videoTitleInput = document.getElementById('interventionVideoTitle');
-        if (videoTitleInput) {
-            videoTitleInput.value = interventionVideoTitles[currentInterventionLevel] || '';
-        }
-        const materialTitleInput = document.getElementById('interventionMaterialTitle');
-        if (materialTitleInput) {
-            materialTitleInput.value = interventionMaterialTitles[currentInterventionLevel] || '';
-        }
     } catch (e) {
         console.error('Error loading intervention data:', e);
         alert('Failed to load intervention data. Please refresh and try again.');
@@ -1079,8 +1002,11 @@ function getExamTypeLabel(examType) {
 
 // ============ EDIT MODAL FROM CONTENT CARD ============
 window.openInterventionEditModal = function (item) {
+    // Load data first, then open modal
     window.loadInterventionFromServer().then(() => {
         window.openModal('interventionModal');
+        // Switch to the tab that was clicked? We can just open the modal and let user choose.
+        // Optionally, if item.tab exists, switch to it.
         if (item && item.tab) {
             window.switchContent(item.tab);
         }

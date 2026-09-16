@@ -22,8 +22,8 @@
     <div class="class-card">
         <div class="class-header">
             <div class="class-header-info">
-                <div class="class-name">{{ $class->grade_level }} - {{ $class->section_name }}</div>
-                <div class="class-teacher">{{ $class->subject_name }}</div>
+                <!-- <div class="class-name">{{ $class->grade_level }} - {{ $class->section_name }}</div> -->
+                <div class="class-name">{{ $class->subject_name }}</div>
             </div>
             <div class="class-icon">
                 <i class="fas fa-book"></i>

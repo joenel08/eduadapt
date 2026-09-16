@@ -20,7 +20,9 @@ Route::get('/students/{class}', [StudentController::class, 'index'])->name('clas
 Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
 Route::get('/classes', [ClassController::class, 'index'])->name('classes');
 Route::get('/class/{class}/students', [ClassController::class, 'students'])->name('class-students');
-Route::get('/class/{class}', [ClassDetailsController::class, 'show'])->name('class-details.show');
+// Route::get('/class/{class}', [ClassDetailsController::class, 'show'])->name('class-details.show');
+Route::get('/class/{assignment}', [ClassDetailsController::class, 'show'])
+    ->name('class-details.show');
 
 
 

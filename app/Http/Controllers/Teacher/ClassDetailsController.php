@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
 use App\Models\Classes;
+use App\Models\TeacherClassAssignment;
 use App\Models\StudentContentProgress;
 use App\Models\PreAssessment;
 use App\Models\PostAssessment;
@@ -13,20 +14,31 @@ use Illuminate\Http\Request;
 
 class ClassDetailsController extends Controller
 {
-    public function show($classId)
+    public function show($assignmentId)
     {
-        $class = Classes::with(['schoolYear', 'studentClassRecords.studentProfile', 'teacherAssignments.subject'])
-            ->findOrFail($classId);
+        // ---- Load the assignment, then derive class + subject from it ----
+        $assignment = TeacherClassAssignment::with([
+            'class.schoolYear',
+            'class.studentClassRecords.studentProfile',
+            'subject',
+        ])->findOrFail($assignmentId);
+
+        $class   = $assignment->class;
+        $subject = $assignment->subject;
+
+        if (!$subject) {
+            return back()->with('error', 'No subject assigned to this class.');
+        }
 
         $schoolYear = SchoolYear::where('is_active', true)->first();
         if (!$schoolYear) {
             return back()->with('error', 'No active school year.');
         }
 
-        $subject = $class->teacherAssignments->first()?->subject;
-        if (!$subject) {
-            return back()->with('error', 'No subject assigned to this class.');
-        }
+        // Same hash as ClassController::index() → same code guaranteed
+        $class->code = 'CLS-' . strtoupper(
+            substr(md5($class->id . $assignment->subject_id), 0, 8)
+        );
 
         // ---- Get students ----
         $students = $this->getStudentsWithProgress($class, $schoolYear, $subject);
@@ -42,7 +54,6 @@ class ClassDetailsController extends Controller
         // ---- Get all progress records for this class + subject ----
         $studentIds = $students->pluck('id')->toArray();
 
-        // Fetch all progress records for the relevant content types
         $progressRecords = StudentContentProgress::whereIn('student_profile_id', $studentIds)
             ->whereIn('content_type', [
                 'App\\Models\\PreAssessment',
@@ -52,21 +63,20 @@ class ClassDetailsController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Load the actual assessment models to get week and other info
-        $preIds = $progressRecords->where('content_type', 'App\\Models\\PreAssessment')->pluck('content_id')->unique();
+        $preIds  = $progressRecords->where('content_type', 'App\\Models\\PreAssessment')->pluck('content_id')->unique();
         $postIds = $progressRecords->where('content_type', 'App\\Models\\PostAssessment')->pluck('content_id')->unique();
         $quizIds = $progressRecords->where('content_type', 'App\\Models\\InterventionQuiz')->pluck('content_id')->unique();
 
-        $preAssessments = PreAssessment::whereIn('id', $preIds)->get()->keyBy('id');
+        $preAssessments  = PreAssessment::whereIn('id', $preIds)->get()->keyBy('id');
         $postAssessments = PostAssessment::whereIn('id', $postIds)->get()->keyBy('id');
-        $quizzes = InterventionQuiz::whereIn('id', $quizIds)->get()->keyBy('id');
+        $quizzes         = InterventionQuiz::whereIn('id', $quizIds)->get()->keyBy('id');
 
-        // Map content_id -> week for each type
         $weekMap = [];
         foreach ($progressRecords as $record) {
             $contentId = $record->content_id;
-            $type = $record->content_type;
-            $week = null;
+            $type      = $record->content_type;
+            $week      = null;
+
             if ($type === 'App\\Models\\PreAssessment' && isset($preAssessments[$contentId])) {
                 $week = $preAssessments[$contentId]->week;
             } elseif ($type === 'App\\Models\\PostAssessment' && isset($postAssessments[$contentId])) {
@@ -74,13 +84,13 @@ class ClassDetailsController extends Controller
             } elseif ($type === 'App\\Models\\InterventionQuiz' && isset($quizzes[$contentId])) {
                 $week = $quizzes[$contentId]->week;
             }
+
             if ($week) {
                 $weekMap[$record->id] = $week;
             }
         }
 
-        // Build weekly data array: [studentName][week][exam_type] = score
-        $weeklyData = [];
+        $weeklyData     = [];
         $studentNameMap = [];
 
         foreach ($students as $student) {
@@ -88,29 +98,28 @@ class ClassDetailsController extends Controller
         }
 
         foreach ($progressRecords as $record) {
-            $studentId = $record->student_profile_id;
+            $studentId   = $record->student_profile_id;
             $studentName = $studentNameMap[$studentId] ?? 'Unknown';
-            $week = $weekMap[$record->id] ?? null;
+            $week        = $weekMap[$record->id] ?? null;
             if (!$week) continue;
 
             $examType = $this->mapContentTypeToExamType($record->content_type);
-            $score = $record->score;
+            $score    = $record->score;
 
             if (!isset($weeklyData[$studentName])) {
                 $weeklyData[$studentName] = [];
             }
             if (!isset($weeklyData[$studentName][$week])) {
                 $weeklyData[$studentName][$week] = [
-                    'pre'        => null,
-                    'post'       => null,
+                    'pre'          => null,
+                    'post'         => null,
                     'intervention' => null,
-                    'category'   => 'not_assessed',
+                    'category'     => 'not_assessed',
                 ];
             }
             $weeklyData[$studentName][$week][$examType] = $score;
         }
 
-        // Compute category per week based on post-test
         foreach ($weeklyData as $studentName => &$weeks) {
             foreach ($weeks as $week => &$data) {
                 $post = $data['post'] ?? null;
@@ -119,12 +128,12 @@ class ClassDetailsController extends Controller
         }
 
         // ---- Exam records for the verification tab ----
-        // We'll reuse the same progress records, but we need to format them
         $examRecords = $progressRecords->map(function ($record) use ($studentNameMap, $weekMap) {
             $studentName = $studentNameMap[$record->student_profile_id] ?? 'Unknown';
-            $examType = $this->mapContentTypeToExamType($record->content_type);
-            $week = $weekMap[$record->id] ?? 'N/A';
+            $examType    = $this->mapContentTypeToExamType($record->content_type);
+            $week        = $weekMap[$record->id] ?? 'N/A';
             return (object) [
+                'code'         => 'EXM-' . strtoupper(substr(md5($record->id . $record->student_profile_id), 0, 8)),
                 'student_name' => $studentName,
                 'student_id'   => $record->student_profile_id,
                 'exam_type'    => $examType,
@@ -146,9 +155,6 @@ class ClassDetailsController extends Controller
         ));
     }
 
-    /**
-     * Get students with their latest pre, post, and intervention scores.
-     */
     private function getStudentsWithProgress($class, $schoolYear, $subject)
     {
         $students = collect();
@@ -164,7 +170,6 @@ class ClassDetailsController extends Controller
                 ($studentProfile->suffix_name ? ' ' . $studentProfile->suffix_name : '')
             ) ?: 'Unknown';
 
-            // Get latest scores for each exam type
             $latestPre = StudentContentProgress::where('student_profile_id', $studentProfile->id)
                 ->where('content_type', 'App\\Models\\PreAssessment')
                 ->orderBy('created_at', 'desc')
@@ -180,21 +185,21 @@ class ClassDetailsController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->first();
 
-            $preScore = $latestPre ? $latestPre->score : null;
-            $postScore = $latestPost ? $latestPost->score : null;
+            $preScore          = $latestPre ? $latestPre->score : null;
+            $postScore         = $latestPost ? $latestPost->score : null;
             $interventionScore = $latestIntervention ? $latestIntervention->score : null;
 
             $category = $this->determineCategory($postScore);
 
             $students->push((object) [
-                'id'                => $studentProfile->id,
-                'name'              => $fullName,
-                'lrn'               => $studentProfile->lrn ?? 'N/A',
-                'category'          => $category,
-                'pre_score'         => $preScore,
-                'post_score'        => $postScore,
+                'id'                 => $studentProfile->id,
+                'name'               => $fullName,
+                'lrn'                => $studentProfile->lrn ?? 'N/A',
+                'category'           => $category,
+                'pre_score'          => $preScore,
+                'post_score'         => $postScore,
                 'intervention_score' => $interventionScore,
-                'initials'          => $this->getInitials($fullName),
+                'initials'           => $this->getInitials($fullName),
             ]);
         }
 
@@ -223,10 +228,10 @@ class ClassDetailsController extends Controller
     private function mapContentTypeToExamType($contentType)
     {
         return match ($contentType) {
-            'App\\Models\\PreAssessment' => 'pre',
-            'App\\Models\\PostAssessment' => 'post',
+            'App\\Models\\PreAssessment'    => 'pre',
+            'App\\Models\\PostAssessment'   => 'post',
             'App\\Models\\InterventionQuiz' => 'intervention',
-            default => 'unknown',
+            default                          => 'unknown',
         };
     }
 }

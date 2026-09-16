@@ -23,6 +23,7 @@ class InterventionMaterialController extends Controller
     {
         $request->validate([
             'level'          => 'required|in:basic,standard,advanced',
+             'intervention_title' => 'required|string|max:500',
             'materials_json' => 'required|json',
         ]);
 
@@ -32,6 +33,7 @@ class InterventionMaterialController extends Controller
         $schoolYear = SchoolYear::getActive();
 
         $level = $request->level;
+        $title  = $request->intervention_title;
         $materials = json_decode($request->materials_json, true);
 
         // Delete existing materials for this level
@@ -54,6 +56,7 @@ class InterventionMaterialController extends Controller
                     'term'               => $term,
                     'week'               => $week,
                     'level'              => $level,
+                    'intervention_title' => $title, 
                     'file_name'          => $mat['file_name'] ?? '',
                     'file_path'          => $mat['file_path'] ?? null,
                     'created_at'         => now(),

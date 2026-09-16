@@ -504,13 +504,57 @@
         </div>
     </div>
 </div>
+
+
 @endif
+
+<!-- CONGRATULATIONS MODAL -->
+<div class="congrats-overlay" id="congratsOverlay">
+    <div class="congrats-modal">
+        <div class="congrats-icon">
+            <i class="fas fa-trophy"></i>
+        </div>
+
+        <h2 class="congrats-title">🎉 Congratulations!</h2>
+
+        <p class="congrats-subtitle">
+            You have completed <span class="congrats-highlight">all assessments</span> for this subject.
+            Your hard work and dedication have paid off!
+        </p>
+
+        <div class="congrats-stats">
+            <div class="congrats-stat">
+                <div class="congrats-stat-icon"><i class="fas fa-book"></i></div>
+                <div class="congrats-stat-value">{{ $class->grade_level ?? '—' }}</div>
+                <div class="congrats-stat-label">Grade</div>
+            </div>
+            <div class="congrats-stat">
+                <div class="congrats-stat-icon"><i class="fas fa-users"></i></div>
+                <div class="congrats-stat-value">{{ $class->section_name ?? '—' }}</div>
+                <div class="congrats-stat-label">Section</div>
+            </div>
+            <div class="congrats-stat">
+                <div class="congrats-stat-icon"><i class="fas fa-check-double"></i></div>
+                <div class="congrats-stat-value">100%</div>
+                <div class="congrats-stat-label">Completed</div>
+            </div>
+        </div>
+
+       <button class="congrats-btn" onclick="closeCongratsModal()">
+    <i class="fas fa-check"></i> Back to My Classes
+</button>
+    </div>
+</div>
 @endsection
 
 
 
 @push('scripts')
 <script>
+    window.CLASSES_URL = "{{ route('student.classes') }}";
+</script>
+<script>
+    
     // ---------- PHP-to-JS Variables ----------
     const classId = {{ $class -> id }};
 
@@ -540,6 +584,69 @@
     let recordedChunks = [];
     let cameraStreams = {};
     let pendingExamStep = null;
+
+
+
+
+
+
+
+// ---------- Congratulations Modal ----------
+let congratsRedirectTimer = null;
+
+function showCongratsModal() {
+    const overlay = document.getElementById('congratsOverlay');
+    if (!overlay) return;
+
+    overlay.classList.add('active');
+
+    // Clean up any lingering exam state
+    if (typeof stopFloatingCamera === 'function') stopFloatingCamera();
+    if (typeof timerInterval !== 'undefined' && timerInterval) clearInterval(timerInterval);
+    examActive = false;
+
+    // Auto-redirect after 5 seconds
+    congratsRedirectTimer = setTimeout(() => {
+        window.location.href = window.CLASSES_URL;
+    }, 5000);
+}
+
+function closeCongratsModal() {
+    const overlay = document.getElementById('congratsOverlay');
+    if (overlay) overlay.classList.remove('active');
+
+    // Cancel the auto-redirect timer if user clicked Done first
+    if (congratsRedirectTimer) {
+        clearTimeout(congratsRedirectTimer);
+        congratsRedirectTimer = null;
+    }
+
+    // Redirect to My Classes
+    window.location.href = window.CLASSES_URL;
+}
+
+// Close on overlay click (also triggers redirect)
+document.addEventListener('click', function (e) {
+    const overlay = document.getElementById('congratsOverlay');
+    if (overlay && overlay.classList.contains('active') && e.target === overlay) {
+        closeCongratsModal();
+    }
+});
+
+// Close on Escape key (also triggers redirect)
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const overlay = document.getElementById('congratsOverlay');
+        if (overlay && overlay.classList.contains('active')) {
+            closeCongratsModal();
+        }
+    }
+});
+
+
+
+
+
 
     // ---------- Navigation ----------
     function goToStep(step) {
@@ -1161,7 +1268,7 @@
                 proceedToStep(next);
             }
         } else if (next === 6) {
-            alert('🎉 Congratulations! You have completed all assessments!');
+            showCongratsModal();
         }
     }
     // ---------- Complete Lesson ----------
@@ -1278,15 +1385,13 @@
 
     // ---------- Initialise ----------
     document.addEventListener('DOMContentLoaded', () => {
-        // Find the first step that is neither disabled nor completed
-        const firstAvailableStep = getFirstAvailableStep();
-        if (firstAvailableStep) {
-            goToStep(firstAvailableStep);
-        } else {
-            // All steps are completed – show congratulations
-            showCompletionMessage();
-        }
-    });
+    const firstAvailableStep = getFirstAvailableStep();
+    if (firstAvailableStep) {
+        goToStep(firstAvailableStep);
+    } else {
+        showCongratsModal();
+    }
+});
 
     /**
      * Returns the number of the first step that is not disabled and not completed.

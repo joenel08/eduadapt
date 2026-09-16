@@ -21,15 +21,15 @@
             <form action="{{ route('teacher.content-library.materials.store', [$grade, $term, $subject, $week]) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="form-group">
-                    <label for="title">Module Title:</label>
-                    <input type="text" name="title" id="title" class="form-control" required>
+                    <label for="title" class="form-label">Module Title:</label>
+                    <input type="text" name="title" id="title" class="form-input">
                 </div>
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <label for="description">Description:</label>
                     <textarea name="description" id="description" class="form-control" rows="4"></textarea>
-                </div>
+                </div> -->
                 <div class="form-group">
-                    <label>Upload Module:</label>
+                    <label class="form-label">Upload Module:</label>
                     <div class="file-upload-area" onclick="document.getElementById('file').click()">
                         <i class="fas fa-cloud-arrow-up"></i>
                         <div class="upload-text">Click to upload</div>

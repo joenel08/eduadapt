@@ -7,8 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class ContentItem extends Model
 {
     protected $fillable = [
-        'teacher_profile_id', 'subject_id', 'grade_level', 'term', 'week',
-        'type', 'title', 'description', 'file_path'
+        'teacher_profile_id',
+        'subject_id',
+        'grade_level',
+        'term',
+        'week',
+        'type',
+        'title',
+        // 'description',
+        'file_path'
     ];
 
     public function teacher()

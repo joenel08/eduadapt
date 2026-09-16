@@ -21,7 +21,7 @@
             <span>Progress</span>
         </a>
         <a href="{{ route('student.profile') }}" data-page="profile" class="{{ request()->routeIs('student.profile') ? 'active' : '' }}">
-            <i class="fas fa-user"></i><span>Profile</span>
+           <i class="fas fa-cog"></i><span>Settings</span>
         </a>
     </nav>
     <div class="sidebar-footer">

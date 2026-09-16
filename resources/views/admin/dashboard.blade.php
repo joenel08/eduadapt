@@ -9,7 +9,7 @@
 
     <div class="grid-4">
         <article class="card">
-            <div class="card-header"><span class="card-title">School Year</span><span class="tag"><a href="{{ route('admin.school-years') }}">Change</a></span></div>
+            <div class="card-header"><span class="card-title">School Year</span><span class="tag"><a href="{{ route('admin.school-years') }}">Add</a></span></div>
             <div class="card-value"> {{ $activeSchoolYear->year }}</div>
         </article>
         <article class="card">

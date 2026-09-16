@@ -164,7 +164,7 @@
             color: #51CF66;
         }
 </style>
-<div class="content">
+
     <h1 class="page-title">
         <i class="fas fa-chart-line"></i>
         Progress Tracking
@@ -197,19 +197,19 @@
                 <tr>
                     <th>Lesson</th>
                     <th>Class</th>
-                    <th>Status</th>
                     <th>Pre-Test</th>
-                    <th>Category</th>
-                    <th>Attempts</th>
                     <th>Post-Test</th>
+                    <th>Attempts</th>
+                    <th>Category</th>
                     <th>Progress</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody id="progressTableBody">
             </tbody>
         </table>
     </div>
-</div>
+
 @endsection
 
 @push('scripts')
@@ -275,17 +275,17 @@
                     <div class="lesson-class" style="font-size:12px; color:#999;">${escapeHtml(item.content_type)}</div>
                 </td>
                 <td>${escapeHtml(item.class_name)}</td>
-                <td><span class="status-badge status-${item.status.replace('-', '')}">${statusIcon} ${statusLabel}</span></td>
                 <td><span class="score-value">${item.pre_score !== null ? item.pre_score + '%' : '-'}</span></td>
-                <td>${categoryDisplay.badgeClass ? `<span class="category-badge ${categoryDisplay.badgeClass}">${categoryDisplay.label}</span>` : categoryDisplay.label}</td>
-                <td>${item.attempts}</td>
                 <td><span class="score-value">${item.post_score !== null ? item.post_score + '%' : '-'}</span></td>
+                <td>${item.attempts}</td>
+                <td>${categoryDisplay.badgeClass ? `<span class="category-badge ${categoryDisplay.badgeClass}">${categoryDisplay.label}</span>` : categoryDisplay.label}</td>
                 <td>
                     <div style="margin-bottom: 6px; font-weight: 600; color: #333;">${progress}%</div>
                     <div class="progress-bar-mini">
                         <div class="progress-bar-mini-fill" style="width: ${progress}%"></div>
                     </div>
                 </td>
+                <td><span class="status-badge status-${item.status.replace('-', '')}">${statusIcon} ${statusLabel}</span></td>
             `;
             table.appendChild(row);
         });

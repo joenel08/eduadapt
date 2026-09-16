@@ -18,6 +18,7 @@ use App\Models\PostAssessment;
 use App\Models\InterventionMaterial;
 use App\Models\InterventionVideo;
 use App\Models\InterventionQuiz;
+use App\Models\SchoolYear;
 
 class DashboardController extends Controller
 {
@@ -209,7 +210,12 @@ class DashboardController extends Controller
             return strcmp($a['subject_name'], $b['subject_name']);
         });
 
+          $schoolYears = SchoolYear::orderBy('year', 'desc')->get();
+        $activeSchoolYear = SchoolYear::getActive();
+
         return view('student.dashboard', compact(
+             'schoolYears',
+            'activeSchoolYear',
             'student',
             'classes',
             'enrolledSubjects',

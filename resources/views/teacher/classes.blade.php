@@ -21,7 +21,7 @@
                 <i class="fas fa-ellipsis-v"></i>
             </button>
             <div class="menu-dropdown" id="menu-{{ $class->id }}">
-               <button class="menu-item" onclick="window.location.href='{{ route('teacher.class-details.show', ['class' => $class->id]) }}'">
+               <button class="menu-item" onclick="window.location.href='{{ route('teacher.class-details.show', ['assignment' => $class->assignment_id]) }}'">
     <i class="fas fa-eye"></i> View Students
 </button>
             </div>
@@ -77,7 +77,7 @@
             </div>
         </div>
         <div class="class-card-footer">
-            <a href="{{ route('teacher.class-details.show', ['class' => $class->id]) }}" class="btn-view"> View Class</a>
+           <a href="{{ route('teacher.class-details.show', $class->assignment_id) }}" class="btn-view"> View Class</a>
         </div>
     </div>
     @endforeach

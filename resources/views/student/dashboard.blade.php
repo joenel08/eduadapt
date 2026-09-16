@@ -4,9 +4,12 @@
 @section('page', 'dashboard')
 
 @section('content')
-<div class="page-title">Welcome, {{ auth()->user()->full_name }}</div>
+<div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+    <div class="page-title">Welcome, {{ auth()->user()->full_name }}</div>
+    <div class=""><p>Current School Year: <span style="font-weight: 700;">{{ $activeSchoolYear->year }}</span> </p> </div>
+</div>
 <!-- Enrolled Classes List -->
-@if($classes->count())
+<!-- @if($classes->count())
 <div style="margin-top:30px;">
     <h3 class="section-title">Your Enrolled Classes</h3>
     <div class="grid-4">
@@ -22,12 +25,12 @@
         @endforeach
     </div>
 </div>
-@else
+@else -->
 <div class="panel" style="margin-top:20px;">
     <p style="color:var(--muted);">You are not enrolled in any classes yet. Contact the administrator.</p>
 </div>
 @endif
-<p class="page-subtitle">Your learning progress and tasks.</p>
+<!-- <p class="page-subtitle">Your learning progress and tasks.</p> -->
 <hr style="margin: 20px 0 20px 0">
 
 <!-- Overview Cards -->
@@ -56,14 +59,14 @@
         <div class="card-value">{{ $completedCount }}</div>
         <div class="card-detail">Finished tasks</div>
     </div>
-    <div class="overview-card">
+    <!-- <div class="overview-card">
         <div class="card-icon red">
             <i class="fas fa-star"></i>
         </div>
         <div class="card-label">Average Score</div>
         <div class="card-value">{{ $averageScore }}</div>
         <div class="card-detail">Performance</div>
-    </div>
+    </div> -->
 </div>
 
 <!-- Notifications Section -->

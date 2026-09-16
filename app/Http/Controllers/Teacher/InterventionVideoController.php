@@ -20,6 +20,7 @@ public function storePage(Request $request, $grade, $term, $subject, $week)
 {
     $request->validate([
         'level'        => 'required|in:basic,standard,advanced',
+           'intervention_video_title' => 'required|string|max:500',
         'videos_json'  => 'required|json',
     ]);
 
@@ -29,6 +30,7 @@ public function storePage(Request $request, $grade, $term, $subject, $week)
     $schoolYear = SchoolYear::getActive();
 
     $level = $request->level;
+     $video_title = $request->intervention_video_title;
     $videos = json_decode($request->videos_json, true);
 
     InterventionVideo::where('teacher_profile_id', $teacher->id)
@@ -50,6 +52,7 @@ public function storePage(Request $request, $grade, $term, $subject, $week)
                 'term'               => $term,
                 'week'               => $week,
                 'level'              => $level,
+                'intervention_video_title' => $video_title, 
                 'sequence'           => $idx + 1,
                 'video_type'         => $video['video_type'] ?? 'link',
                 'video_url'          => $video['video_url'] ?? null,
@@ -73,6 +76,7 @@ public function storePage(Request $request, $grade, $term, $subject, $week)
             'subject' => 'required|string',
             'week' => 'required|string',
             'level' => 'required|in:basic,standard,advanced',
+             'intervention_video_title' => 'nullable|string|max:500', 
             'videos' => 'sometimes|array',
             'videos.*.video_type' => 'sometimes|in:link,file',
             'videos.*.video_url' => 'nullable|url',
@@ -84,7 +88,7 @@ public function storePage(Request $request, $grade, $term, $subject, $week)
         $schoolYear = SchoolYear::getActive();
 
         $videos = $data['videos'] ?? [];
-
+    $video_title  = $data['intervention_video_title'] ?? null;
         // Delete existing
         InterventionVideo::where('teacher_profile_id', $teacher->id)
             ->where('subject_id', $subject->id)
@@ -104,6 +108,7 @@ public function storePage(Request $request, $grade, $term, $subject, $week)
                 'term' => $data['term'],
                 'week' => $data['week'],
                 'level' => $data['level'],
+                'intervention_video_title' => $video_title,  
                 'sequence' => $idx + 1,
                 'video_type' => $video['video_type'] ?? 'link',
                 'video_url' => $video['video_url'] ?? null,

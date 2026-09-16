@@ -23,7 +23,7 @@
 
                 {{-- Level selector --}}
                 <div class="form-group">
-                    <label for="level">Select Level:</label>
+                    <label for="level"  class="form-label">Select Level:</label>
                     <select name="level" id="level" class="form-control" required>
                         <option value="">-- Select Level --</option>
                         <option value="basic">🔹 Basic (Below Average)</option>
@@ -32,13 +32,25 @@
                     </select>
                 </div>
 
+                {{-- ✅ NEW: Intervention Title --}}
+                <div class="form-group">
+                    <label class="form-label" for="intervention_video_title">Intervention Video Title:</label>
+                    <input type="text"
+                           name="intervention_video_title"
+                           id="intervention_video_title"
+                           class="form-input "
+                           placeholder="e.g., Week 1 Basic Math Videos"
+                           maxlength="255"
+                           required>
+                </div>
+
                 <div class="option-grid">
-                    <button type="button" class="option-btn active" onclick="selectVideoType('link')"><i class="fas fa-link"></i> Video Link</button>
-                    <button type="button" class="option-btn" onclick="selectVideoType('file')"><i class="fas fa-file-video"></i> Upload File</button>
+                    <button type="button" class="option-btn active" onclick="selectVideoType('link', event)"><i class="fas fa-link"></i> Video Link</button>
+                    <button type="button" class="option-btn" onclick="selectVideoType('file', event)"><i class="fas fa-file-video"></i> Upload File</button>
                 </div>
                 <div id="videoLinkInput" class="form-group">
-                    <label>Paste Video Link:</label>
-                    <input type="url" id="videoLink" class="form-control" placeholder="https://youtube.com/...">
+                    <label  class="form-label">Paste Video Link:</label>
+                    <input type="url" id="videoLink" class="form-input" placeholder="https://youtube.com/...">
                 </div>
                 <div id="videoFileInput" class="form-group" style="display:none;">
                     <div class="file-upload-area" onclick="document.getElementById('videoFileInputElem').click()">
@@ -52,7 +64,7 @@
                     <i class="fas fa-plus"></i> Add This Video
                 </button>
 
-                <div class="items-list" style="max-height:250px; overflow-y:auto; border:1px solid #ddd; border-radius:4px; margin-top:10px;">
+                <div class="items-list" style="max-height:250px; overflow-y:auto; border:1px solid #ddd; border-radius:4px; margin-top:10px; margin-bottom:10px;">
                     <table class="table table-striped">
                         <thead><tr><th>#</th><th>Video</th><th>Actions</th></tr></thead>
                         <tbody id="videosTableBody"></tbody>
@@ -75,12 +87,14 @@
     let videos = [];
     let videoType = 'link';
 
-    function selectVideoType(type) {
+    function selectVideoType(type, evt) {
         videoType = type;
         document.getElementById('videoLinkInput').style.display = (type === 'link') ? 'block' : 'none';
         document.getElementById('videoFileInput').style.display = (type === 'file') ? 'block' : 'none';
         document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('active'));
-        event.currentTarget.classList.add('active');
+        if (evt && evt.currentTarget) {
+            evt.currentTarget.classList.add('active');
+        }
     }
 
     function addVideo() {
@@ -106,10 +120,16 @@
         tbody.innerHTML = videos.map((v, i) => `
             <tr>
                 <td>${i+1}</td>
-                <td>${v.video_url || v.file_name || 'Video'}</td>
+                <td>${escapeHtml(v.video_url || v.file_name || 'Video')}</td>
                 <td><button type="button" class="btn btn-sm btn-remove" onclick="removeVideo(${i})">Remove</button></td>
             </tr>
         `).join('');
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     function removeVideo(index) {

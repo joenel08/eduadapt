@@ -25,7 +25,7 @@
         <button type="submit" class="primary-button">Add School Year</button>
     </form>
 </div>
-
+<br>
 <div class="table-card">
     <table>
         <thead><tr><th>School Year</th><th>Status</th><th>Actions</th></tr></thead>
@@ -46,11 +46,13 @@
                             @csrf
                             <button type="submit" class="action-button success">Set Active</button>
                         </form>
+                        <form method="POST" action="{{ route('admin.school-years.destroy', $sy) }}" style="display:inline;" onsubmit="return confirm('Delete this school year?');">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="action-button danger">Delete</button>
+                        </form>
+                    @else
+                        <span style="color:#64748b;font-size:0.875rem;">—</span>
                     @endif
-                    <form method="POST" action="{{ route('admin.school-years.destroy', $sy) }}" style="display:inline;" onsubmit="return confirm('Delete this school year?');">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="action-button danger">Delete</button>
-                    </form>
                 </td>
             </tr>
             @empty

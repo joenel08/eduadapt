@@ -126,13 +126,17 @@
 <div class="breadcrumb">
     <a class="breadcrumb-item" href="{{ route('teacher.classes') }}"><i class="fas fa-home"></i> My Classes</a>
     <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
-    <span class="breadcrumb-item active"> {{ optional($class->teacherAssignments->first())->subject->name ?? $class->section_name }}</span>
+    <span class="breadcrumb-item active">
+    {{ $subject->name ?? $class->section_name }}
+</span>
 </div>
 
 <!-- Page Header -->
 <div class="page-header">
-    <h1><i class="fas fa-book"></i>{{ optional($class->teacherAssignments->first())->subject->name ?? $class->section_name }}</h1>
-    <p> {{ $class->grade_level }} • {{ $class->section_name }} • Class Code: {{ $class->class_code ?? 'N/A' }}</p>
+   <h1>
+    <i class="fas fa-book"></i>{{ $subject->name ?? $class->section_name }}
+</h1>
+    <p> {{ $class->grade_level }} • {{ $class->section_name }} • Class Code: {{ $class->code ?? 'N/A' }}</p>
 </div>
 
 <!-- Tabs Container -->
@@ -303,7 +307,7 @@
             </div>
 
             <!-- WEEKLY BREAKDOWN TABLE -->
-            <div class="analytics-performance-table" style="margin-top:30px;">
+            <!-- <div class="analytics-performance-table" style="margin-top:30px;">
                 <div class="analytics-table-header">
                     <h3>Weekly Assessment Breakdown</h3>
                 </div>
@@ -369,7 +373,7 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </div> -->
         </div>
 
         <!-- EXAM VERIFICATION TAB -->

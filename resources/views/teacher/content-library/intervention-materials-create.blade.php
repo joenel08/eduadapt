@@ -23,13 +23,25 @@
 
                 {{-- Level selector --}}
                 <div class="form-group">
-                    <label for="level">Select Level:</label>
+                    <label for="level"  class="form-label">Select Level:</label>
                     <select name="level" id="level" class="form-control" required style="margin-bottom: 20px;">
                         <option value="">-- Select Level --</option>
                         <option value="basic">🔹 Basic (Below Average)</option>
                         <option value="standard" selected>🔹 Standard (Average)</option>
                         <option value="advanced">🔹 Advanced (Above Average)</option>
                     </select>
+                </div>
+    
+                <div class="form-group">
+                    <label for="intervention_title" class="form-label">Intervention Title:</label>
+                    <input type="text"
+                           name="intervention_title"
+                           id="intervention_title"
+                           class="form-input"
+                           placeholder="e.g., Week 1 Basic Math Intervention"
+                           maxlength="255"
+                           required
+                           style="margin-bottom: 20px;">
                 </div>
 
                 <div class="form-group">

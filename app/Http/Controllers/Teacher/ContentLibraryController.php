@@ -61,7 +61,7 @@ class ContentLibraryController extends Controller
 
     public function weeks($grade, $term, $subject)
     {
-        $weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9','Week 8','Week 10','Week 11','Week 12'];
+        $weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9','Week 10','Week 11','Week 12'];
         return view('teacher.content-library.weeks', compact('grade', 'term', 'subject', 'weeks'));
     }
 
@@ -81,7 +81,7 @@ class ContentLibraryController extends Controller
     {
         $request->validate([
             'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
+            // 'description' => 'nullable|string',
             'file'        => 'required|file|mimes:pdf,ppt,pptx,doc,docx,mp4,mov,avi,webm|max:51200',
         ]);
 
@@ -104,7 +104,7 @@ class ContentLibraryController extends Controller
             'term'               => $term,
             'week'               => $week,
             'title'              => $request->title,
-            'description'        => $request->description,
+            // 'description'        => $request->description,
             'file_path'          => $path,
             'file_name'          => $fileName,
             'type'               => 'learning_material',
@@ -137,12 +137,12 @@ class ContentLibraryController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            // 'description' => 'nullable|string',
             'file' => 'nullable|file|mimes:pdf,ppt,pptx,doc,docx,mp4,mov,avi,webm|max:51200',
         ]);
 
         $item->title = $request->title;
-        $item->description = $request->description;
+        // $item->description = $request->description;
 
         if ($request->hasFile('file')) {
             if ($item->file_path && Storage::disk('public')->exists($item->file_path)) {
@@ -163,7 +163,7 @@ class ContentLibraryController extends Controller
             'item' => [
                 'id' => $item->id,
                 'title' => $item->title,
-                'description' => $item->description,
+                // 'description' => $item->description,
                 'file_name' => basename($item->file_path),
                 'file_url' => $item->file_url,
                 'uploaded_at' => $item->created_at->toISOString(),
@@ -304,12 +304,12 @@ class ContentLibraryController extends Controller
         // Similar to the existing update method, but with redirect.
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            // 'description' => 'nullable|string',
             'file' => 'nullable|file|mimes:pdf,ppt,pptx,doc,docx,mp4,mov,avi,webm|max:51200',
         ]);
 
         $item->title = $request->title;
-        $item->description = $request->description;
+        // $item->description = $request->description;
 
         if ($request->hasFile('file')) {
             // Delete old file if exists

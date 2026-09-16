@@ -129,11 +129,23 @@ class DashboardController extends Controller
         ));
     }
 
-   public function profile()
+public function profile()
 {
     $user = auth()->user();
     $teacher = TeacherProfile::where('user_id', $user->id)->firstOrFail();
-    return view('teacher.profile', compact('teacher', 'user'));
+
+    // Prefer users.name, fall back to TeacherProfile name parts
+    $fullName = $user->name;
+    if (empty($fullName)) {
+        $fullName = trim(
+            ($teacher->first_name ?? '') . ' ' .
+            ($teacher->middle_name ? $teacher->middle_name . ' ' : '') .
+            ($teacher->last_name ?? '') .
+            ($teacher->suffix_name ? ' ' . $teacher->suffix_name : '')
+        );
+    }
+
+    return view('teacher.profile', compact('teacher', 'user', 'fullName'));
 }
 
     public function updateProfile(Request $request)
@@ -157,25 +169,25 @@ class DashboardController extends Controller
     }
 
     public function updatePicture(Request $request)
-{
-    $request->validate([
-        'profile_picture' => 'required|image|max:2048',
-    ]);
+    {
+        $request->validate([
+            'profile_picture' => 'required|image|max:2048',
+        ]);
 
-    $user = auth()->user();
-    $teacher = TeacherProfile::where('user_id', $user->id)->firstOrFail();
+        $user = auth()->user();
+        $teacher = TeacherProfile::where('user_id', $user->id)->firstOrFail();
 
-    // Delete old picture if exists
-    if ($teacher->profile_picture && Storage::disk('public')->exists($teacher->profile_picture)) {
-        Storage::disk('public')->delete($teacher->profile_picture);
+        // Delete old picture if exists
+        if ($teacher->profile_picture && Storage::disk('public')->exists($teacher->profile_picture)) {
+            Storage::disk('public')->delete($teacher->profile_picture);
+        }
+
+        $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+        $teacher->profile_picture = $path;
+        $teacher->save();
+
+        return back()->with('success', 'Profile picture updated.');
     }
-
-    $path = $request->file('profile_picture')->store('profile_pictures', 'public');
-    $teacher->profile_picture = $path;
-    $teacher->save();
-
-    return back()->with('success', 'Profile picture updated.');
-}
     public function updatePassword(Request $request)
     {
         $request->validate([
