@@ -151,6 +151,9 @@
         <a href="{{ route('admin.master-data') }}" data-page="masterdata" class="{{ request()->routeIs('admin.master-data') ? 'active' : '' }}">
             <i class="fas fa-database"></i><span>Master Data Upload</span>
         </a>
+         <a href="{{ route('admin.report-per-school-year') }}" data-page="report-per-school-year" class="{{ request()->routeIs('admin.report-per-school-year') ? 'active' : '' }}">
+            <i class="fas fa-list"></i><span>Report</span>
+        </a>
     </nav>
 
     <div class="sidebar-footer">

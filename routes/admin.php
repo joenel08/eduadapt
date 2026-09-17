@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ClassController;
 use App\Http\Controllers\Admin\TeacherAssignmentController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\SubjectController;
+use App\Http\Controllers\Admin\ReportPerSchoolYearController;
 
 
 
@@ -50,4 +51,11 @@ Route::get('/student/{lrn}/edit', [StudentController::class, 'edit'])->name('stu
 Route::put('/student/{lrn}', [StudentController::class, 'update'])->name('student.update');
 
 
+Route::get('/reports/per-school-year', [ReportPerSchoolYearController::class, 'index'])
+    ->name('report-per-school-year');
 
+// Route::get('/reports/per-school-year/download', [ReportPerSchoolYearController::class, 'downloadExcel'])
+//     ->name('report-per-school-year.download');
+
+Route::get('/reports/per-school-year/subject-download', [ReportPerSchoolYearController::class, 'downloadClassSubject'])
+    ->name('report-per-school-year.subject-download');
