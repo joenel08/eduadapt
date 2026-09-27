@@ -236,6 +236,7 @@ button, input, select, textarea {
     cursor: pointer;
 }
 
+
 .notification-badge {
     position: absolute;
     top: 6px;
@@ -507,9 +508,9 @@ button, input, select, textarea {
 
 .section-row {
     display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
-    align-items: stretch;
+    align-items: start;
     width: 100%;
     margin-top: 24px;
 }
@@ -521,7 +522,6 @@ button, input, select, textarea {
 .section-row .panel {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     background: var(--surface);
     border-radius: 22px;
     padding: 22px;
@@ -1235,4 +1235,20 @@ a{
     .table-card td {
         padding: 12px 10px;
     }
+}
+
+
+.btn-success {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #00AA66 0%, #008855 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 170, 102, 0.35);
 }

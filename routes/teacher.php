@@ -13,7 +13,7 @@ use App\Http\Controllers\Teacher\InterventionVideoController;
 use App\Http\Controllers\Teacher\InterventionQuizController;
 use App\Http\Controllers\Teacher\InterventionController;
 use App\Http\Controllers\Teacher\GlobalAnalyticsController;
-
+use App\Http\Controllers\Teacher\StudentProgressController;
 // Dashboard & Classes
 Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/students/{class}', [StudentController::class, 'index'])->name('class-students');
@@ -140,3 +140,8 @@ Route::prefix('content-library')->group(function () {
             ->name('content-library.config.save');
     });
 });
+
+
+ Route::get('/class/{classId}/student/{studentId}/progress',
+        [StudentProgressController::class, 'show'])
+        ->name('student-progress');

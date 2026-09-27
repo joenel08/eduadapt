@@ -7,8 +7,6 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('images/logo_icon.png') }}">
     <title>EduAdapt – Login</title>
     <style>
-        /* Keep all existing styles, but remove .role-selector and .role-btn */
-        /* (Styles remain the same – just no role selector) */
         * {
             margin: 0;
             padding: 0;
@@ -104,7 +102,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 20px 0 25px;
+            margin: 20px 0 8px;
             font-size: 13px;
         }
 
@@ -122,14 +120,20 @@
 
         .forgot-password {
             color: #0066CC;
-            text-decoration: none;
             font-weight: 600;
+            cursor: default;
         }
 
-        .forgot-password:hover {
-            text-decoration: underline;
+        /* ---- Forgot password note ---- */
+        .forgot-note {
+            text-align: left;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.4;
         }
 
+        /* ---- Login button + loading state ---- */
         .login-btn {
             width: 100%;
             padding: 13px;
@@ -141,12 +145,45 @@
             font-weight: 700;
             cursor: pointer;
             transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
-        .login-btn:hover {
+        .login-btn:hover:not(:disabled) {
             background: #004D99;
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 102, 204, 0.3);
+        }
+
+        .login-btn:disabled {
+            background: #4d94d6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+            opacity: 0.9;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+            flex-shrink: 0;
+        }
+
+        .login-btn.loading .spinner {
+            display: block;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .error-message {
@@ -193,7 +230,7 @@
         </div>
         @endif
 
-        <form method="POST" action="{{ route('login') }}">
+        <form method="POST" action="{{ route('login') }}" id="loginForm">
             @csrf
 
             <!-- Login ID / Username / LRN -->
@@ -222,10 +259,18 @@
                     <input type="checkbox" name="remember">
                     <span>Remember me</span>
                 </label>
-                <a href="#" class="forgot-password">Forgot Password?</a>
+                <!-- <span class="forgot-password">Forgot Password?</span> -->
             </div>
 
-            <button type="submit" class="login-btn">Sign In</button>
+            <!-- Forgot password description -->
+            <p class="forgot-note">
+                Forgot password? Please go to the Admin Office to request a password change.
+            </p>
+
+            <button type="submit" class="login-btn" id="loginBtn">
+                <span class="spinner" aria-hidden="true"></span>
+                <span class="btn-text">Sign In</span>
+            </button>
         </form>
 
         <div class="footer">
@@ -238,6 +283,29 @@
             const field = document.getElementById('password');
             field.type = field.type === 'password' ? 'text' : 'password';
         }
+
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const btnText = loginBtn.querySelector('.btn-text');
+
+        loginForm.addEventListener('submit', function () {
+            // Prevent double submission
+            if (loginBtn.disabled) return;
+
+            loginBtn.disabled = true;
+            loginBtn.classList.add('loading');
+            btnText.textContent = 'Signing in...';
+        });
+
+        // Safety net: if the user returns via browser back/forward cache,
+        // reset the button to its normal state.
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                loginBtn.disabled = false;
+                loginBtn.classList.remove('loading');
+                btnText.textContent = 'Sign In';
+            }
+        });
     </script>
 </body>
 

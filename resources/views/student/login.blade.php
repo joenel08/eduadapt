@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EduAdapt – Student Login</title>
     <style>
-        /* Put your full CSS here – same as the sample, but change the title and field label */
         * {
             margin: 0;
             padding: 0;
@@ -115,7 +114,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
+            margin-bottom: 10px; /* reduced to make room for note */
             font-size: 13px;
         }
         .remember-me {
@@ -133,13 +132,19 @@
             cursor: pointer;
             font-weight: 500;
         }
+        /* Updated: no longer a link, just a label */
         .forgot-password {
-            text-decoration: none;
             color: #0066CC;
             font-weight: 600;
+            cursor: default;
         }
-        .forgot-password:hover {
-            text-decoration: underline;
+        /* New note for forgot password instructions */
+        .forgot-note {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+            margin-bottom: 20px;
+            line-height: 1.4;
         }
         .login-btn {
             width: 100%;
@@ -181,6 +186,7 @@
         @media (max-width: 600px) {
             .content { padding: 30px 20px; }
             .header { padding: 15px 20px; }
+            .forgot-note { text-align: left; }
         }
     </style>
 </head>
@@ -231,7 +237,12 @@
                         <input type="checkbox" id="remember" name="remember" />
                         <label for="remember">Remember me</label>
                     </div>
-                    <a href="#" class="forgot-password">Forgot Password?</a>
+                    <span class="forgot-password">Forgot Password?</span>
+                </div>
+
+                <!-- New description for forgot password -->
+                <div class="forgot-note">
+                    Please go to the admin office to request a password change.
                 </div>
 
                 <button type="submit" class="login-btn">Login</button>

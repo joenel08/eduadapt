@@ -24,7 +24,6 @@
 
 <div class="section-row">
     <!-- Student Master List Panel -->
-    <!-- Student Master List Panel -->
     <div class="panel">
         <div class="panel-header">
             <div>
@@ -56,7 +55,10 @@
                         <div class="section-list-actions">
                             <button class="action-button" onclick="openUploadModal({{ $class->id }}, '{{ $class->section_name }}')">Upload Students</button>
                             <button class="action-button" onclick="viewStudents({{ $class->id }})">View</button>
-                            <form action="{{ route('admin.classes.destroy', $class) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this class? All student enrollments will be removed.');">
+                            <form action="{{ route('admin.classes.destroy', $class) }}" method="POST" style="display:inline;"
+                                data-confirm="Delete this class? All student enrollments will be removed."
+                                data-confirm-title="Delete Section"
+                                data-confirm-ok="Yes, Delete">
                                 @csrf @method('DELETE')
                                 <button type="submit" class="action-button danger">Delete</button>
                             </form>
@@ -79,8 +81,14 @@
                 <h3>Teacher Master List</h3>
                 <p>Upload and manage teachers, then assign them to classes.</p>
             </div>
-            <button class="secondary-button" type="button" onclick="document.getElementById('teacherUploadInput').click()">Upload Teachers</button>
-            <input type="file" id="teacherUploadInput" accept=".xlsx,.xls" style="display:none;" onchange="uploadTeacherFile(this)">
+            <div style="display:flex; gap:8px;">
+                <a href="{{ route('admin.master-data.teacher-template') }}" class="btn-success">
+                    <i class="fas fa-download"></i> Template
+                </a>
+                <button class="secondary-button" type="button" onclick="openTeacherUploadModal()">
+                    <i class="fas fa-upload"></i> Upload Teachers
+                </button>
+            </div>
         </div>
 
         <div class="table-card">
@@ -108,9 +116,12 @@
                         </td>
                         <td>
                             <button class="action-button" onclick="assignTeacher({{ $teacher->id }})">Assign</button>
-                            <form action="{{ route('admin.master-data.delete-teacher', $teacher->employee_id) }}" method="POST" style="display:inline;">
+                            <form action="{{ route('admin.master-data.delete-teacher', $teacher->employee_id) }}" method="POST" style="display:inline;"
+                                data-confirm="Remove this teacher? Their account will be deleted."
+                                data-confirm-title="Remove Teacher"
+                                data-confirm-ok="Yes, Remove">
                                 @csrf @method('DELETE')
-                                <button type="submit" class="action-button danger" onclick="return confirm('Remove teacher?')">Remove</button>
+                                <button type="submit" class="action-button danger">Delete</button>
                             </form>
                         </td>
                     </tr>
@@ -126,12 +137,13 @@
 </div>
 
 <!-- Modals -->
+
 <!-- Add Class Modal -->
 <div class="modal-backdrop" id="addClassModal">
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">Add New Class</h3>
-            <button class="modal-close" onclick="closeModal('addClassModal')">&times;</button>
+            <button type="button" class="modal-close" onclick="closeAppModal('addClassModal')">&times;</button>
         </div>
         <div class="modal-body">
             <form id="addClassForm" onsubmit="submitAddClass(event)">
@@ -149,7 +161,7 @@
                 </div>
                 <input type="hidden" name="school_year_id" value="{{ $activeSchoolYear->id ?? '' }}">
                 <div style="display:flex;gap:12px;justify-content:flex-end;">
-                    <button type="button" class="secondary-button" onclick="closeModal('addClassModal')">Cancel</button>
+                    <button type="button" class="secondary-button" onclick="closeAppModal('addClassModal')">Cancel</button>
                     <button type="submit" class="primary-button">Create Class</button>
                 </div>
             </form>
@@ -162,19 +174,57 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">Upload Students for <span id="uploadClassName"></span></h3>
-            <button class="modal-close" onclick="closeModal('uploadStudentModal')">&times;</button>
+            <button type="button" class="modal-close" onclick="closeAppModal('uploadStudentModal')">&times;</button>
         </div>
         <div class="modal-body">
-            <form id="uploadStudentForm" action="{{ route('admin.master-data.upload-student') }}" method="POST" enctype="multipart/form-data">
+            <form id="uploadStudentForm" onsubmit="submitUploadStudents(event)" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="class_id" id="uploadClassId">
                 <div class="input-group">
                     <label>Excel File (.xlsx, .xls)</label>
-                    <input type="file" name="file" accept=".xlsx,.xls" required>
+                    <input type="file" name="file" id="studentFileInput" accept=".xlsx,.xls" required
+                        onchange="showFileName(this, 'studentFileName')">
+                    <div id="studentFileName" style="font-size:12px;color:#666;margin-top:6px;"></div>
                 </div>
                 <div style="display:flex;gap:12px;justify-content:flex-end;">
-                    <button type="button" class="secondary-button" onclick="closeModal('uploadStudentModal')">Cancel</button>
-                    <button type="submit" class="primary-button">Upload</button>
+                    <button type="button" class="secondary-button" onclick="closeAppModal('uploadStudentModal')">Cancel</button>
+                    <button type="submit" class="primary-button" id="uploadStudentBtn">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Teachers Modal -->
+<div class="modal-backdrop" id="uploadTeacherModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Upload Teachers</h3>
+            <button type="button" class="modal-close" onclick="closeAppModal('uploadTeacherModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="uploadTeacherForm" onsubmit="submitUploadTeachers(event)" enctype="multipart/form-data">
+                @csrf
+                <div class="input-group">
+                    <label>Excel File (.xlsx, .xls)</label>
+                    <input type="file" name="file" id="teacherFileInput" accept=".xlsx,.xls" required
+                        onchange="showFileName(this, 'teacherFileName')">
+                    <div id="teacherFileName" style="font-size:12px;color:#666;margin-top:6px;"></div>
+                </div>
+
+                <div class="message-box" style="background:#eef2ff;color:#1d4ed8;border:1px solid #c7d2fe;font-size:13px;">
+                    <i class="fas fa-info-circle"></i>
+                    Please make sure your file follows the <strong>Template</strong> format.
+                    Each new teacher will be given a <strong>default password</strong> (their Employee ID).
+                </div>
+
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="secondary-button" onclick="closeAppModal('uploadTeacherModal')">Cancel</button>
+                    <button type="submit" class="primary-button" id="uploadTeacherBtn">
+                        <i class="fas fa-upload"></i> Save Teachers
+                    </button>
                 </div>
             </form>
         </div>
@@ -186,7 +236,7 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">Assign Teacher to Class</h3>
-            <button class="modal-close" onclick="closeModal('assignTeacherModal')">&times;</button>
+            <button type="button" class="modal-close" onclick="closeAppModal('assignTeacherModal')">&times;</button>
         </div>
         <div class="modal-body">
             <form id="assignTeacherForm" action="{{ route('admin.teacher-assign') }}" method="POST">
@@ -202,12 +252,10 @@
                 </div>
                 <div class="input-group">
                     <label>Select Subject</label>
-                    <select name="subject_id" id="assignSubjectId" required>
-                        <!-- populated dynamically -->
-                    </select>
+                    <select name="subject_id" id="assignSubjectId" required></select>
                 </div>
                 <div style="display:flex;gap:12px;justify-content:flex-end;">
-                    <button type="button" class="secondary-button" onclick="closeModal('assignTeacherModal')">Cancel</button>
+                    <button type="button" class="secondary-button" onclick="closeAppModal('assignTeacherModal')">Cancel</button>
                     <button type="submit" class="primary-button">Assign</button>
                 </div>
             </form>
@@ -218,136 +266,222 @@
 @endsection
 
 @push('scripts')
+
 <script>
-    // Switch sections by grade (for the new section manager)
+    // ---------- Section tabs ----------
     function switchSectionGrade(e) {
-        const grade = e.target.dataset.grade;
-        const items = document.querySelectorAll('#sectionGrid .section-list-item');
-        items.forEach(item => {
+        const grade = e.currentTarget.dataset.grade;
+        document.querySelectorAll('#sectionGrid .section-list-item').forEach(item => {
             item.style.display = (item.dataset.grade === grade) ? '' : 'none';
         });
-        // Update active tab
         document.querySelectorAll('.section-tab').forEach(tab => tab.classList.remove('active'));
-        e.target.classList.add('active');
+        e.currentTarget.classList.add('active');
     }
 
-    // Modal functions
-    function openModal(id) {
-        document.getElementById(id).classList.add('active');
+    // ---------- Modal helpers ----------
+    const modalFormMap = {
+        addClassModal: 'addClassForm',
+        uploadStudentModal: 'uploadStudentForm',
+        uploadTeacherModal: 'uploadTeacherForm',
+        assignTeacherModal: 'assignTeacherForm',
+    };
+
+    function openAppModal(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.add('active');
     }
 
-    function closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+    function closeAppModal(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove('active');
+
+        // Reset the form and clear any "selected file" text so the modal reopens fresh
+        const formId = modalFormMap[id];
+        if (formId) {
+            const form = document.getElementById(formId);
+            if (form) form.reset();
+
+            const fileText = el.querySelector('[id$="FileName"]');
+            if (fileText) fileText.textContent = '';
+        }
     }
 
-    function openAddClassModal() {
-        openModal('addClassModal');
+    function openAddClassModal() { openAppModal('addClassModal'); }
+
+    // ---------- Show selected file name ----------
+    function showFileName(input, targetId) {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        if (input.files && input.files.length > 0) {
+            const file = input.files[0];
+            const sizeKB = (file.size / 1024).toFixed(1);
+            target.innerHTML = `<i class="fas fa-file-excel" style="color:#00AA66;"></i> ${file.name} <span style="color:#999;">(${sizeKB} KB)</span>`;
+        } else {
+            target.textContent = '';
+        }
     }
 
+    // ---------- Add class ----------
     function submitAddClass(e) {
         e.preventDefault();
         const form = document.getElementById('addClassForm');
         const formData = new FormData(form);
 
         fetch('{{ route("admin.classes.store") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
-                },
-                body: formData
-            })
-            .then(response => response.json().then(data => ({
-                status: response.status,
-                data
-            })))
-            .then(({
-                status,
-                data
-            }) => {
-                if (status >= 200 && status < 300 && data.success) {
-                    closeModal('addClassModal');
-                    location.reload();
-                } else {
-                    let errorMsg = data.message || 'Unknown error.';
-                    if (data.errors) {
-                        const errorList = Object.values(data.errors).flat().join('\n');
-                        errorMsg += '\n\n' + errorList;
-                    }
-                    alert('Error creating class:\n' + errorMsg);
-                }
-            })
-            .catch(error => {
-                console.error('Fetch error:', error);
-                alert('Network error. Please check your connection.');
-            });
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: formData
+        })
+        .then(response => response.json().then(data => ({ status: response.status, data })))
+        .then(({ status, data }) => {
+            if (status >= 200 && status < 300 && data.success) {
+                closeAppModal('addClassModal');
+                showToast('Class created successfully!');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                let errorMsg = data.message || 'Unknown error.';
+                if (data.errors) errorMsg = Object.values(data.errors).flat().join(' • ');
+                showToast(errorMsg, true);
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            showToast('Network error. Please check your connection.', true);
+        });
     }
 
-    function uploadTeacherFile(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('file', file);
+    // ---------- Teacher upload modal ----------
+    function openTeacherUploadModal() {
+        const form = document.getElementById('uploadTeacherForm');
+        form.reset();
+        const nameEl = document.getElementById('teacherFileName');
+        if (nameEl) nameEl.textContent = '';
+        openAppModal('uploadTeacherModal');
+    }
+
+    function submitUploadTeachers(e) {
+        e.preventDefault();
+        const form = document.getElementById('uploadTeacherForm');
+        const fileInput = document.getElementById('teacherFileInput');
+
+        if (!fileInput.files.length) {
+            showToast('Please select a file to upload.', true);
+            return;
+        }
+
+        const formData = new FormData(form);
+        const btn = document.getElementById('uploadTeacherBtn');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
         fetch('{{ route("admin.master-data.upload-teacher") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Upload failed.');
-                }
-            })
-            .catch(() => alert('Error uploading.'));
-        input.value = '';
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
+            if (data.success) {
+                closeAppModal('uploadTeacherModal');
+                showToast(data.message || 'Teachers uploaded successfully!');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast(data.message || 'Upload failed.', true);
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            showToast('Error uploading. Please try again.', true);
+        });
     }
 
+    // ---------- Student upload modal ----------
+    function openUploadModal(classId, className) {
+        document.getElementById('uploadClassId').value = classId;
+        document.getElementById('uploadClassName').textContent = className;
+        const form = document.getElementById('uploadStudentForm');
+        form.reset();
+        document.getElementById('uploadClassId').value = classId;
+        const nameEl = document.getElementById('studentFileName');
+        if (nameEl) nameEl.textContent = '';
+        openAppModal('uploadStudentModal');
+    }
+
+    function submitUploadStudents(e) {
+        e.preventDefault();
+        const form = document.getElementById('uploadStudentForm');
+        const fileInput = document.getElementById('studentFileInput');
+
+        if (!fileInput.files.length) {
+            showToast('Please select a file to upload.', true);
+            return;
+        }
+
+        const formData = new FormData(form);
+        const btn = document.getElementById('uploadStudentBtn');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+        fetch('{{ route("admin.master-data.upload-student") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
+            if (data.success) {
+                closeAppModal('uploadStudentModal');
+                showToast(data.message || 'Students uploaded successfully!');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showToast(data.message || 'Upload failed.', true);
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            showToast('Error uploading. Please try again.', true);
+        });
+    }
+
+    // ---------- View students ----------
     function viewStudents(classId) {
         window.location.href = '{{ route("admin.class-students", "") }}' + '/' + classId;
     }
 
-    function openUploadModal(classId, className) {
-        document.getElementById('uploadClassId').value = classId;
-        document.getElementById('uploadClassName').textContent = className;
-        openModal('uploadStudentModal');
-    }
-
-
+    // ---------- Assign teacher ----------
     function assignTeacher(teacherId) {
         document.getElementById('assignTeacherId').value = teacherId;
-        openModal('assignTeacherModal');
+        openAppModal('assignTeacherModal');
+        updateSubjects();
     }
-
-    function viewStudents(classId) {
-        window.location.href = '{{ route("admin.class-students","")}}/' + classId;
-    }
-
-    // Initialize – show the active grade on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const activeTab = document.querySelector('.section-tab.active');
-        if (activeTab) {
-            activeTab.click(); // triggers switchSectionGrade
-        } else {
-            // Fallback: click Grade 5 tab
-            const grade5Tab = document.querySelector('.section-tab[data-grade="Grade 5"]');
-            if (grade5Tab) grade5Tab.click();
-        }
-    });
 
     function updateSubjects() {
-        const classId = document.getElementById('assignClassId').value;
         const selectedOption = document.querySelector('#assignClassId option:checked');
         const grade = selectedOption ? selectedOption.dataset.grade : '';
         const subjectSelect = document.getElementById('assignSubjectId');
-        // Clear options
         subjectSelect.innerHTML = '';
-        // Fetch subjects for this grade from a pre-populated JS object
-        const subjectsByGrade = @json($subjectsByGrade); // we need to pass this as JSON
+        const subjectsByGrade = @json($subjectsByGrade);
         const subjects = subjectsByGrade[grade] || [];
         subjects.forEach(subj => {
             const opt = document.createElement('option');
@@ -357,11 +491,31 @@
         });
     }
 
-    // On modal open, call updateSubjects
-    function assignTeacher(teacherId) {
-        document.getElementById('assignTeacherId').value = teacherId;
-        openModal('assignTeacherModal');
-        updateSubjects(); // populate subjects for the default class
-    }
+    // ---------- Global modal behaviors (backdrop click, Escape key) ----------
+    document.addEventListener('DOMContentLoaded', function () {
+        // Close modal when the dark backdrop is clicked
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+            backdrop.addEventListener('click', function (e) {
+                if (e.target === backdrop) {
+                    closeAppModal(backdrop.id);
+                }
+            });
+        });
+
+        // Close the topmost open modal with the Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                const openModals = document.querySelectorAll('.modal-backdrop.active');
+                if (openModals.length) {
+                    closeAppModal(openModals[openModals.length - 1].id);
+                }
+            }
+        });
+
+        // Init the section tabs
+        const activeTab = document.querySelector('.section-tab.active')
+            || document.querySelector('.section-tab[data-grade="Grade 5"]');
+        if (activeTab) activeTab.click();
+    });
 </script>
 @endpush

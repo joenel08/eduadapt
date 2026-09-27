@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\TeacherAssignmentController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ReportPerSchoolYearController;
+use App\Http\Controllers\Admin\UserManagementController;
 
 
 
@@ -41,6 +42,9 @@ Route::post('/master-data/upload-student', [MasterDataController::class, 'upload
 Route::post('/master-data/upload-teacher', [MasterDataController::class, 'uploadTeacher'])->name('master-data.upload-teacher');
 Route::delete('/master-data/student/{lrn}', [MasterDataController::class, 'deleteStudent'])->name('master-data.delete-student');
 Route::delete('/master-data/teacher/{employeeId}', [MasterDataController::class, 'deleteTeacher'])->name('master-data.delete-teacher');
+Route::get('/master-data/teachers/template', [MasterDataController::class, 'downloadTeacherTemplate'])
+    ->name('master-data.teacher-template');
+
 
 Route::get('/class-students/{class}', [ClassController::class, 'students'])->name('class-students');
 
@@ -59,3 +63,12 @@ Route::get('/reports/per-school-year', [ReportPerSchoolYearController::class, 'i
 
 Route::get('/reports/per-school-year/subject-download', [ReportPerSchoolYearController::class, 'downloadClassSubject'])
     ->name('report-per-school-year.subject-download');
+
+
+
+
+Route::get('/user-management', [UserManagementController::class, 'index'])->name('user-management');
+Route::put('/user-management/student/{id}', [UserManagementController::class, 'updateStudent'])->name('user-management.update-student');
+Route::put('/user-management/teacher/{id}', [UserManagementController::class, 'updateTeacher'])->name('user-management.update-teacher');
+Route::post('/user-management/student/{id}/reset-password', [UserManagementController::class, 'resetStudentPassword'])->name('user-management.reset-student-password');
+Route::post('/user-management/teacher/{id}/reset-password', [UserManagementController::class, 'resetTeacherPassword'])->name('user-management.reset-teacher-password');

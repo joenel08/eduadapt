@@ -29,9 +29,9 @@ class StudentProfile extends Model
         'contact_number',
         'learning_modality',
         'remarks',
-        'contact_no',   
-        'address',   
-        'profile_picture',   
+        'contact_no',
+        'address',
+        'profile_picture',
     ];
 
     public function user()
@@ -41,5 +41,10 @@ class StudentProfile extends Model
     public function classRecords()
     {
         return $this->hasMany(StudentClassRecord::class);
+    }
+
+    public function studentClassRecords()
+    {
+        return $this->hasMany(StudentClassRecord::class, 'student_profile_id');
     }
 }

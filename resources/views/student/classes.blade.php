@@ -40,9 +40,9 @@
             </div>
             <div class="class-header-info">
                 <div class="class-name">{{ $class->grade_level }} - {{ $class->section_name }}</div>
-                <div class="class-teacher">{{ $class->subject_name }}</div> <!-- single subject, not list -->
+                <!-- <div class="class-teacher">{{ $class->subject_name }}</div>  -->
             </div>
-
+<br>
             <button class="class-enter-btn" onclick="window.location.href='{{ route('student.class.details', ['classId' => $class->id, 'subjectId' => $class->subject_id]) }}'">
                 <i class="fas fa-arrow-right"></i> Enter Class
             </button>

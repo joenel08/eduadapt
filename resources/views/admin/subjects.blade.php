@@ -13,28 +13,35 @@
 @if(session('error'))
     <div class="message-box" style="background:#ffe4e6;color:#991b1b;">{{ session('error') }}</div>
 @endif
-
-<div class="panel" style="max-width:600px;">
+<div class="panel" style="max-width:900px;">
     <h3>Add Subject</h3>
+
     <form method="POST" action="{{ route('admin.subjects.store') }}">
         @csrf
-        <div class="form-grid">
-            <div class="input-group">
-                <label>Grade Level</label>
-                <select name="grade_level" required>
+
+        <div style="display:grid; grid-template-columns:180px 1fr 130px; column-gap:15px; align-items:end;">
+
+            <div>
+                <label style="display:block; margin-bottom:6px;">Grade Level</label>
+                <select name="grade_level" required style="width:100%; height:50px;">
                     <option value="Grade 5">Grade 5</option>
                     <option value="Grade 6">Grade 6</option>
                 </select>
             </div>
-            <div class="input-group">
-                <label>Subject Name</label>
-                <input type="text" name="name" placeholder="e.g. Mathematics" required>
+
+            <div>
+                <label style="display:block; margin-bottom:6px;">Subject Name</label>
+                <input type="text" name="name" placeholder="e.g. Mathematics" required style="width:100%; height:50px;">
             </div>
+
+            <button type="submit" class="primary-button" style="width:100%; height:50px;">
+                Add Subject
+            </button>
+
         </div>
-        <button type="submit" class="primary-button">Add Subject</button>
     </form>
 </div>
-
+<br>
 <div class="table-card">
     <table>
         <thead><tr><th>Grade Level</th><th>Subject</th><th>Action</th></tr></thead>

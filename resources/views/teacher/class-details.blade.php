@@ -127,15 +127,15 @@
     <a class="breadcrumb-item" href="{{ route('teacher.classes') }}"><i class="fas fa-home"></i> My Classes</a>
     <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
     <span class="breadcrumb-item active">
-    {{ $subject->name ?? $class->section_name }}
-</span>
+        {{ $subject->name ?? $class->section_name }}
+    </span>
 </div>
 
 <!-- Page Header -->
 <div class="page-header">
-   <h1>
-    <i class="fas fa-book"></i>{{ $subject->name ?? $class->section_name }}
-</h1>
+    <h1>
+        <i class="fas fa-book"></i>{{ $subject->name ?? $class->section_name }}
+    </h1>
     <p> {{ $class->grade_level }} • {{ $class->section_name }} • Class Code: {{ $class->code ?? 'N/A' }}</p>
 </div>
 
@@ -144,7 +144,7 @@
     <div class="tabs-header">
         <button class="tab-btn active" onclick="openTab(event, 'students')"><i class="fas fa-users"></i> Student List</button>
         <button class="tab-btn" onclick="openTab(event, 'analytics')"><i class="fas fa-chart-bar"></i> Analytics</button>
-        <button class="tab-btn" onclick="openTab(event, 'examverif')"><i class="fas fa-certificate"></i> Exam Verification</button>
+        <!-- <button class="tab-btn" onclick="openTab(event, 'examverif')"><i class="fas fa-certificate"></i> Exam Verification</button> -->
     </div>
 
     <div class="tabs-content">
@@ -183,7 +183,13 @@
                             <span class="category-badge badge-not-assessed">Not Assessed</span>
                             @endif
                         </td>
-                        <td><button class="btn-remove" onclick="handleRemoveStudent(this)"><i class="fas fa-trash-alt"></i> Remove</button></td>
+                        <td>
+                            <a href="{{ route('teacher.student-progress', ['classId' => $class->id, 'studentId' => $student->id]) }}"
+                                class="btn btn-save">
+                                <i class="fas fa-chart-line"></i> View Progress
+                            </a> &nbsp;
+                            <button class="btn-remove" onclick="handleRemoveStudent(this)"><i class="fas fa-trash-alt"></i> Remove</button>
+                        </td>
                     </tr>
                     @empty
                     <tr>
@@ -377,7 +383,7 @@
         </div>
 
         <!-- EXAM VERIFICATION TAB -->
-        <div id="examverif" class="tab-pane">
+        <!-- <div id="examverif" class="tab-pane">
             <div style="margin-bottom:20px;">
                 <input type="text" id="examSearch" placeholder="Search by Student Name or Assessment..." class="form-input" onkeyup="filterExamRecords()">
             </div>
@@ -432,7 +438,7 @@
                 <div class="empty-state-title">No Exam Records</div>
                 <div class="empty-state-text">No recorded exams found. Student assessments will appear here.</div>
             </div>
-        </div>
+        </div> -->
     </div>
 </div>
 
@@ -522,22 +528,22 @@
     };
 
     window.filterExamRecords = function() {
-    var input = document.getElementById('examSearch');
-    var filter = input.value.toUpperCase().trim();
-    var table = document.getElementById('examTableBody');
-    var tr = table.getElementsByTagName('tr');
-    for (var i = 0; i < tr.length; i++) {
-        var studentTd = tr[i].getElementsByTagName('td')[0];
-        var assessmentTd = tr[i].getElementsByTagName('td')[1];
-        if (studentTd && assessmentTd) {
-            var studentSpan = studentTd.querySelector('.student-name span');
-            var studentText = studentSpan ? (studentSpan.textContent || studentSpan.innerText) : '';
-            var assessmentText = assessmentTd.textContent || assessmentTd.innerText;
-            var match = studentText.toUpperCase().indexOf(filter) > -1 || assessmentText.toUpperCase().indexOf(filter) > -1;
-            tr[i].style.display = match ? '' : 'none';
+        var input = document.getElementById('examSearch');
+        var filter = input.value.toUpperCase().trim();
+        var table = document.getElementById('examTableBody');
+        var tr = table.getElementsByTagName('tr');
+        for (var i = 0; i < tr.length; i++) {
+            var studentTd = tr[i].getElementsByTagName('td')[0];
+            var assessmentTd = tr[i].getElementsByTagName('td')[1];
+            if (studentTd && assessmentTd) {
+                var studentSpan = studentTd.querySelector('.student-name span');
+                var studentText = studentSpan ? (studentSpan.textContent || studentSpan.innerText) : '';
+                var assessmentText = assessmentTd.textContent || assessmentTd.innerText;
+                var match = studentText.toUpperCase().indexOf(filter) > -1 || assessmentText.toUpperCase().indexOf(filter) > -1;
+                tr[i].style.display = match ? '' : 'none';
+            }
         }
-    }
-};
+    };
     window.handleRemoveStudent = function(btn) {
         if (confirm('Are you sure you want to remove this student?')) {
             var row = btn.closest('tr');

@@ -14,6 +14,11 @@ use App\Models\SchoolYear;
 use App\Models\Classes;
 use App\Models\Subject;
 
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
+
 use Illuminate\Support\Facades\Log;
 
 class MasterDataController extends Controller
@@ -34,7 +39,7 @@ class MasterDataController extends Controller
         // Eager load teacher assignments and their classes
         $teachers = TeacherProfile::with(['user', 'teacherClassAssignments.class'])->get();
 
-        return view('admin.masterdata', compact('schoolYears', 'activeSchoolYear', 'classes', 'teachers','subjectsByGrade'));
+        return view('admin.masterdata', compact('schoolYears', 'activeSchoolYear', 'classes', 'teachers', 'subjectsByGrade'));
     }
 
     public function uploadStudent(Request $request)
@@ -69,7 +74,10 @@ class MasterDataController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('Student upload failed: ' . $e->getMessage());
-            return back()->with('error', 'Upload failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Upload failed: ' . $e->getMessage(),
+            ], 500);
         }
     }
     public function uploadTeacher(Request $request)
@@ -78,11 +86,21 @@ class MasterDataController extends Controller
             'file' => 'required|mimes:xlsx,xls',
         ]);
 
-        Excel::import(new TeachersImport, $request->file('file'));
+        try {
+            Excel::import(new TeachersImport, $request->file('file'));
 
-        return redirect()->route('admin.master-data')->with('success', 'Teachers imported successfully.');
+            return response()->json([
+                'success' => true,
+                'message' => 'Teachers imported successfully.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Teacher upload failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Upload failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
-
     public function deleteStudent($lrn)
     {
         // Option to delete a student profile (and user)
@@ -100,5 +118,49 @@ class MasterDataController extends Controller
             $profile->user->delete();
         }
         return back()->with('success', 'Teacher removed.');
+    }
+
+
+    public function downloadTeacherTemplate()
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Header row
+        $headers = ['employee_id', 'prefix_name','first_name', 'middle_name','last_name', 'suffix_name','contact_no','address'];
+        $sheet->fromArray($headers, null, 'A1');
+
+        // Style header
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '0066CC'],
+            ],
+        ];
+        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+
+        // Sample row
+        $sheet->fromArray([
+            ['EMP-0001', 'Dr.','Juan','Pluto', 'Dela Cruz', 'Jr.','09123456790','Purok 1, San Juan, Cabagan, Isabela'],
+        ], null, 'A2');
+
+        // Auto-size columns
+        foreach (range('A', 'D') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Note row
+        $sheet->setCellValue('A4', 'Note: Do not change the column headers. Keep the same order. Delete this line if finish.');
+        $sheet->getStyle('A4')->getFont()->setItalic(true)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF666666'));
+
+        $filename = 'teacher_upload_template.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 }

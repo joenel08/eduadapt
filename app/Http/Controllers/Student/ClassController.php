@@ -36,53 +36,53 @@ class ClassController extends Controller
      * Determine if a content item is considered "done" based on its type and progress status.
      */
     private function isContentDone($release, $progressRecords)
-{
-    // Map short content_type (from releases) to full class name (used in progress)
-    $typeMap = [
-        'learningMaterial'      => ContentItem::class,
-        'preAssessment'         => PreAssessment::class,
-        'postAssessment'        => PostAssessment::class,
-        'interventionMaterial'  => InterventionMaterial::class,
-        'interventionVideo'     => InterventionVideo::class,
-        'interventionQuiz'      => InterventionQuiz::class,
-    ];
+    {
+        // Map short content_type (from releases) to full class name (used in progress)
+        $typeMap = [
+            'learningMaterial'      => ContentItem::class,
+            'preAssessment'         => PreAssessment::class,
+            'postAssessment'        => PostAssessment::class,
+            'interventionMaterial'  => InterventionMaterial::class,
+            'interventionVideo'     => InterventionVideo::class,
+            'interventionQuiz'      => InterventionQuiz::class,
+        ];
 
-    $fullClass = $typeMap[$release->content_type] ?? null;
-    if (!$fullClass) {
-        return false;
+        $fullClass = $typeMap[$release->content_type] ?? null;
+        if (!$fullClass) {
+            return false;
+        }
+
+        $key = $fullClass . '|' . $release->content_id;
+        $progress = $progressRecords->get($key);
+
+        if (!$progress) {
+            return false;
+        }
+
+        $status = $progress->status;
+
+        // Material types: viewed or completed counts
+        $materialTypes = [
+            ContentItem::class,
+            InterventionMaterial::class,
+            InterventionVideo::class
+        ];
+        // Assessment types: only completed counts
+        $assessmentTypes = [
+            PreAssessment::class,
+            PostAssessment::class,
+            InterventionQuiz::class
+        ];
+
+        if (in_array($fullClass, $materialTypes)) {
+            return in_array($status, ['viewed', 'completed']);
+        } elseif (in_array($fullClass, $assessmentTypes)) {
+            return $status === 'completed';
+        }
+
+        // Fallback: non-pending is considered done
+        return $status !== 'pending';
     }
-
-    $key = $fullClass . '|' . $release->content_id;
-    $progress = $progressRecords->get($key);
-
-    if (!$progress) {
-        return false;
-    }
-
-    $status = $progress->status;
-
-    // Material types: viewed or completed counts
-    $materialTypes = [
-        ContentItem::class,
-        InterventionMaterial::class,
-        InterventionVideo::class
-    ];
-    // Assessment types: only completed counts
-    $assessmentTypes = [
-        PreAssessment::class,
-        PostAssessment::class,
-        InterventionQuiz::class
-    ];
-
-    if (in_array($fullClass, $materialTypes)) {
-        return in_array($status, ['viewed', 'completed']);
-    } elseif (in_array($fullClass, $assessmentTypes)) {
-        return $status === 'completed';
-    }
-
-    // Fallback: non-pending is considered done
-    return $status !== 'pending';
-}
     public function index()
     {
         $user = auth()->user();
@@ -189,6 +189,13 @@ class ClassController extends Controller
 
         // dd($releases->pluck('subject_id', 'id')->toArray());
 
+        $studentProgress = StudentContentProgress::where('student_profile_id', $student->id)
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->content_type . '|' . $item->content_id;
+            });
+
+
         // Extract content from releases
         $lessonMaterials = $this->extractContent($releases, 'learningMaterial');
         $preAssessment   = $this->extractContent($releases, 'preAssessment')->first();
@@ -263,7 +270,8 @@ class ClassController extends Controller
             'interventionMaterialsLocked',
             'preTimeLimit',
             'postTimeLimit',
-            'quizTimeLimit'
+            'quizTimeLimit',
+             'studentProgress'
         ));
     }
 
@@ -651,7 +659,4 @@ class ClassController extends Controller
         // Also mark the intervention_materials_done flag? Not needed as the JS will handle it.
         return response()->json(['success' => true]);
     }
-
-
-    
 }
