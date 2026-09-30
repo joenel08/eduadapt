@@ -145,3 +145,6 @@ Route::prefix('content-library')->group(function () {
  Route::get('/class/{classId}/student/{studentId}/progress',
         [StudentProgressController::class, 'show'])
         ->name('student-progress');
+        Route::delete('/class/{classId}/student/{studentId}/remove',
+    [ClassDetailsController::class, 'removeStudent'])
+    ->name('class.remove-student');

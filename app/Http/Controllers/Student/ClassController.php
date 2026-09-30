@@ -17,6 +17,7 @@ use App\Models\InterventionVideo;
 use App\Models\InterventionQuiz;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\TeacherClassAssignment;
@@ -430,6 +431,21 @@ class ClassController extends Controller
                 ]
             );
 
+
+// 🔔 Notify the teacher
+$contentModel = $contentType::find($request->content_id);
+$contentTitle = $contentModel->title
+    ?? $contentModel->file_name
+    ?? 'Material';
+
+$action = $status === 'completed' ? 'material_viewed' : 'material_viewed';
+NotificationService::notifyStudentAction(
+    $student,
+    $request->class_id,
+    $action,
+    $contentTitle
+);
+
             return response()->json(['success' => true, 'progress' => $progress]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -494,6 +510,33 @@ class ClassController extends Controller
                 $data
             );
 
+            // 🔔 Notify teacher
+$actionType = match (true) {
+    str_contains($contentType, 'PreAssessment')    => 'assessment_submitted',
+    str_contains($contentType, 'PostAssessment')   => 'assessment_submitted',
+    str_contains($contentType, 'InterventionQuiz') => 'quiz_submitted',
+    default                                          => 'assessment_submitted',
+};
+
+// Get class_id from content_releases
+$release = \App\Models\ContentRelease::where('content_type', $this->resolveReleaseTypeKey($contentType))
+    ->where('content_id', $request->content_id)
+    ->first();
+$classId = $release->class_id ?? 0;
+
+$label = match (true) {
+    str_contains($contentType, 'PreAssessment')    => 'Pre-Assessment',
+    str_contains($contentType, 'PostAssessment')   => 'Post-Assessment',
+    str_contains($contentType, 'InterventionQuiz') => 'Mini Quiz',
+    default                                          => 'Assessment',
+};
+
+NotificationService::notifyStudentAction(
+    $student,
+    $classId,
+    $actionType,
+    $label
+);
             return response()->json([
                 'success' => true,
                 'score' => $score,
@@ -594,6 +637,15 @@ class ClassController extends Controller
             }
         }
 
+         // 🔔 Notify teacher that the student finished all lesson materials
+    if ($releases->isNotEmpty()) {
+        NotificationService::notifyStudentAction(
+            $student,
+            $request->class_id,
+            'material_viewed',
+            'All lesson materials'
+        );
+    }
         return response()->json(['success' => true]);
     }
 
@@ -656,7 +708,28 @@ class ClassController extends Controller
             }
         }
 
+          // 🔔 Notify teacher that the student finished all intervention materials/videos
+    NotificationService::notifyStudentAction(
+        $student,
+        $request->class_id,
+        'material_viewed',
+        'All intervention materials'
+    );
         // Also mark the intervention_materials_done flag? Not needed as the JS will handle it.
         return response()->json(['success' => true]);
     }
+
+
+    private function resolveReleaseTypeKey(string $fullClass): string
+{
+    return match ($fullClass) {
+        ContentItem::class           => 'learningMaterial',
+        PreAssessment::class         => 'preAssessment',
+        PostAssessment::class        => 'postAssessment',
+        InterventionMaterial::class  => 'interventionMaterial',
+        InterventionVideo::class     => 'interventionVideo',
+        InterventionQuiz::class      => 'interventionQuiz',
+        default                       => '',
+    };
+}
 }

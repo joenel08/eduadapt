@@ -42,44 +42,77 @@ class MasterDataController extends Controller
         return view('admin.masterdata', compact('schoolYears', 'activeSchoolYear', 'classes', 'teachers', 'subjectsByGrade'));
     }
 
+    // public function uploadStudent(Request $request)
+    // {
+    //     $request->validate([
+    //         'file' => 'required|mimes:xlsx,xls',
+    //         'class_id' => 'required|exists:classes,id',
+    //     ]);
+
+    //     try {
+    //         $import = new StudentsImport($request->class_id);
+    //         Excel::import($import, $request->file('file'));
+
+    //         $successCount = $import->getSuccessCount();
+    //         $errors = $import->getErrors();
+
+    //         $message = "{$successCount} students uploaded successfully.";
+
+    //         if (!empty($errors)) {
+    //             $errorCount = count($errors);
+    //             $message .= " {$errorCount} rows had errors.";
+    //             // Store errors in session to display on view
+    //             session()->flash('import_errors', array_slice($errors, 0, 10));
+    //         }
+
+    //         if ($successCount > 0 && empty($errors)) {
+    //             return redirect()->route('admin.master-data')->with('success', $message);
+    //         } elseif ($successCount > 0 && !empty($errors)) {
+    //             return redirect()->route('admin.master-data')->with('warning', $message);
+    //         } else {
+    //             return redirect()->route('admin.master-data')->with('error', 'Import failed. No students were added. ' . (isset($errors[0]) ? 'First error: ' . $errors[0] : ''));
+    //         }
+    //     } catch (\Exception $e) {
+    //         Log::error('Student upload failed: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Upload failed: ' . $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
     public function uploadStudent(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,xls',
-            'class_id' => 'required|exists:classes,id',
-        ]);
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,xls',
+        'class_id' => 'required|exists:classes,id',
+    ]);
 
-        try {
-            $import = new StudentsImport($request->class_id);
-            Excel::import($import, $request->file('file'));
+    try {
+        $import = new StudentsImport($request->class_id);
+        Excel::import($import, $request->file('file'));
 
-            $successCount = $import->getSuccessCount();
-            $errors = $import->getErrors();
+        $successCount = $import->getSuccessCount();
+        $errors = $import->getErrors();
 
-            $message = "{$successCount} students uploaded successfully.";
-
-            if (!empty($errors)) {
-                $errorCount = count($errors);
-                $message .= " {$errorCount} rows had errors.";
-                // Store errors in session to display on view
-                session()->flash('import_errors', array_slice($errors, 0, 10));
-            }
-
-            if ($successCount > 0 && empty($errors)) {
-                return redirect()->route('admin.master-data')->with('success', $message);
-            } elseif ($successCount > 0 && !empty($errors)) {
-                return redirect()->route('admin.master-data')->with('warning', $message);
-            } else {
-                return redirect()->route('admin.master-data')->with('error', 'Import failed. No students were added. ' . (isset($errors[0]) ? 'First error: ' . $errors[0] : ''));
-            }
-        } catch (\Exception $e) {
-            Log::error('Student upload failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage(),
-            ], 500);
+        $message = "{$successCount} students uploaded successfully.";
+        if (!empty($errors)) {
+            $message .= " " . count($errors) . " rows had errors.";
         }
+
+        return response()->json([
+            'success' => $successCount > 0,
+            'message' => $message,
+            'errors'  => array_slice($errors, 0, 10),
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Student upload failed: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Upload failed: ' . $e->getMessage(),
+        ], 500);
     }
+}
     public function uploadTeacher(Request $request)
     {
         $request->validate([

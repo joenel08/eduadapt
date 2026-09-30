@@ -39,7 +39,7 @@
                 <div class="class-progress-fill" style="width: {{ $class->progress }}%"></div>
             </div>
             <div class="class-header-info">
-                <div class="class-name">{{ $class->grade_level }} - {{ $class->section_name }}</div>
+                <div class="class-name">{{ $class->grade_level }} </div>
                 <!-- <div class="class-teacher">{{ $class->subject_name }}</div>  -->
             </div>
 <br>

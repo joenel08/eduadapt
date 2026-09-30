@@ -66,7 +66,7 @@
                     </div>
                 </div>
             </div>
-            <div class="class-code-section">
+            <!-- <div class="class-code-section">
                 <span class="class-code-label">Class Code</span>
                 <div class="class-code-wrapper">
                     <span class="class-code">{{ $class->code }}</span>
@@ -74,7 +74,7 @@
                         <i class="fas fa-copy"></i>
                     </button>
                 </div>
-            </div>
+            </div> -->
         </div>
         <div class="class-card-footer">
            <a href="{{ route('teacher.class-details.show', $class->assignment_id) }}" class="btn-view"> View Class</a>

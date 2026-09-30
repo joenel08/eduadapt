@@ -120,6 +120,156 @@
         font-weight: 700;
         color: #333;
     }
+
+    /* ===== Remove Student Modal ===== */
+.remove-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: rmFadeIn 0.2s ease;
+}
+.remove-modal-overlay.active { display: flex; }
+
+@keyframes rmFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.remove-modal {
+    background: #fff;
+    width: 100%;
+    max-width: 460px;
+    margin: 20px;
+    border-radius: 16px;
+    padding: 32px 28px 24px;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    animation: rmPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.remove-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #FF6B6B, #DC2626);
+}
+
+@keyframes rmPopIn {
+    from { opacity: 0; transform: scale(0.9) translateY(10px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.remove-modal-icon {
+    width: 76px;
+    height: 76px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    color: #dc2626;
+    animation: rmPulse 2s infinite;
+}
+
+@keyframes rmPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+    50%      { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+}
+
+.remove-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 10px;
+}
+
+.remove-modal-text {
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 0 18px;
+}
+
+.remove-modal-text strong {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.remove-modal-warning {
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 12px 14px;
+    border-radius: 8px;
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.remove-modal-warning i {
+    color: #f59e0b;
+    font-size: 16px;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.remove-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.remove-btn-cancel,
+.remove-btn-confirm {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.remove-btn-cancel {
+    background: #f1f5f9;
+    color: #475569;
+}
+.remove-btn-cancel:hover { background: #e2e8f0; }
+
+.remove-btn-confirm {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+.remove-btn-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+.remove-btn-confirm:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
 </style>
 
 <!-- Breadcrumb -->
@@ -131,12 +281,14 @@
     </span>
 </div>
 
-<!-- Page Header -->
-<div class="page-header">
-    <h1>
-        <i class="fas fa-book"></i>{{ $subject->name ?? $class->section_name }}
-    </h1>
-    <p> {{ $class->grade_level }} • {{ $class->section_name }} • Class Code: {{ $class->code ?? 'N/A' }}</p>
+
+
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;">
+    <div>
+        <h1 style="font-size:28px;font-weight:700;"> <i class="fas fa-book"></i>{{ $subject->name ?? $class->section_name }}</h1>
+        <p style="color:#999;">{{ $class->grade_level }} • {{ $class->section_name }} </p>
+    </div>
+   
 </div>
 
 <!-- Tabs Container -->
@@ -188,7 +340,12 @@
                                 class="btn btn-save">
                                 <i class="fas fa-chart-line"></i> View Progress
                             </a> &nbsp;
-                            <button class="btn-remove" onclick="handleRemoveStudent(this)"><i class="fas fa-trash-alt"></i> Remove</button>
+                           <button class="btn-remove"
+    data-student-id="{{ $student->id }}"
+    data-student-name="{{ $student->name }}"
+    onclick="handleRemoveStudent(this)">
+    <i class="fas fa-trash-alt"></i> Remove
+</button>
                         </td>
                     </tr>
                     @empty
@@ -491,6 +648,37 @@
     </div>
 </div>
 
+
+<!-- ===== Remove Student Confirmation Modal ===== -->
+<div class="remove-modal-overlay" id="removeStudentModal">
+    <div class="remove-modal">
+        <div class="remove-modal-icon">
+            <i class="fas fa-user-minus"></i>
+        </div>
+
+        <h2 class="remove-modal-title">Remove Student?</h2>
+
+        <p class="remove-modal-text">
+            You are about to remove <strong id="removeStudentName">this student</strong>
+            from <strong>{{ $class->grade_level }} - {{ $class->section_name }}</strong>.
+        </p>
+
+        <div class="remove-modal-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            This action cannot be undone. All enrollment records for this class will be deleted.
+        </div>
+
+        <div class="remove-modal-actions">
+            <button type="button" class="remove-btn-cancel" onclick="closeRemoveStudentModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="button" class="remove-btn-confirm" id="confirmRemoveStudentBtn" onclick="confirmRemoveStudent()">
+                <i class="fas fa-trash-alt"></i> Yes, Remove
+            </button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -544,13 +732,97 @@
             }
         }
     };
-    window.handleRemoveStudent = function(btn) {
-        if (confirm('Are you sure you want to remove this student?')) {
-            var row = btn.closest('tr');
+    // ===== Remove Student Modal =====
+let _pendingRemove = null;
+
+window.handleRemoveStudent = function(btn) {
+    const row = btn.closest('tr');
+    const studentId = btn.dataset.studentId;
+    const studentName = btn.dataset.studentName || 'this student';
+
+    // Store pending data
+    _pendingRemove = { row, studentId };
+
+    // Populate modal
+    document.getElementById('removeStudentName').textContent = studentName;
+    document.getElementById('removeStudentModal').classList.add('active');
+};
+
+window.closeRemoveStudentModal = function() {
+    document.getElementById('removeStudentModal').classList.remove('active');
+    _pendingRemove = null;
+};
+
+window.confirmRemoveStudent = function() {
+    if (!_pendingRemove) return;
+
+    const btn = document.getElementById('confirmRemoveStudentBtn');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...';
+
+    const { row, studentId } = _pendingRemove;
+    const classId = {{ $class->id }};
+
+    fetch(`/teacher/class/${classId}/student/${studentId}/remove`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (data.success) {
+            closeRemoveStudentModal();
+            row.style.transition = 'all 0.3s ease';
             row.style.opacity = '0';
+            row.style.transform = 'translateX(-20px)';
             setTimeout(() => row.remove(), 300);
+            // If you have a showToast helper, use it here:
+            if (typeof showToast === 'function') {
+                showToast(data.message || 'Student removed.');
+            }
+        } else {
+            if (typeof showToast === 'function') {
+                showToast(data.message || 'Remove failed.', true);
+            } else {
+                alert(data.message || 'Remove failed.');
+            }
         }
-    };
+    })
+    .catch(err => {
+        console.error(err);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        if (typeof showToast === 'function') {
+            showToast('Network error.', true);
+        } else {
+            alert('Network error.');
+        }
+    });
+};
+
+// Close when clicking outside the modal
+document.addEventListener('DOMContentLoaded', function () {
+    const overlay = document.getElementById('removeStudentModal');
+    if (overlay) {
+        overlay.addEventListener('click', function (e) {
+            if (e.target === this) closeRemoveStudentModal();
+        });
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+        const overlay = document.getElementById('removeStudentModal');
+        if (e.key === 'Escape' && overlay && overlay.classList.contains('active')) {
+            closeRemoveStudentModal();
+        }
+    });
+});
 
     window.handleAccept = function(btn) {
         var row = btn.closest('tr');

@@ -4,58 +4,53 @@ namespace App\Imports;
 
 use App\Models\User;
 use App\Models\TeacherProfile;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithValidation;
-use Illuminate\Support\Facades\Hash;
 
-class TeachersImport implements ToModel, WithHeadingRow, WithValidation
+class TeachersImport implements ToModel, WithHeadingRow
 {
     public function model(array $row)
     {
-        if (empty($row['employee_id'])) return null;
+        // Normalize keys: strip extra spaces, lowercase
+        $normalized = [];
+        foreach ($row as $key => $value) {
+            $normalizedKey = strtolower(trim(str_replace(' ', '_', $key)));
+            $normalized[$normalizedKey] = is_string($value) ? trim($value) : $value;
+        }
 
-        // Skip duplicates
-        if (TeacherProfile::where('employee_id', $row['employee_id'])->exists()) {
+        // If no employee_id, skip silently (footer/note rows, blanks)
+        $employeeId = $normalized['employee_id'] ?? null;
+        if (empty($employeeId)) {
+            Log::info('TeachersImport: skipped row (no employee_id)', $normalized);
             return null;
         }
 
-        $fullName = trim(
-            ($row['prefix_name'] ?? '') . ' ' .
-                $row['first_name'] . ' ' .
-                ($row['middle_name'] ?? '') . ' ' .
-                $row['last_name'] . ' ' .
-                ($row['suffix_name'] ?? '')
-        );
+        // Skip existing
+        if (TeacherProfile::where('employee_id', $employeeId)->exists()) {
+            Log::info("TeachersImport: skipped {$employeeId} — already exists");
+            return null;
+        }
 
-
-
+        // Create user
         $user = User::create([
-            'name'     => $fullName,
-            'password' => Hash::make($row['employee_id']),
+            'login_id' => $employeeId,
+            'password' => Hash::make($employeeId),
             'role'     => 'teacher',
-            'status' => 'approved',
         ]);
 
+        // Create profile
         return new TeacherProfile([
-            'user_id'      => $user->id,
-            'employee_id'  => $row['employee_id'],
-            'prefix_name'  => $row['prefix_name']  ?? null,
-            'first_name'   => $row['first_name'],
-            'middle_name'  => $row['middle_name']  ?? null,
-            'last_name'    => $row['last_name'],
-            'suffix_name'  => $row['suffix_name']  ?? null,
-            'contact_no'   => $row['contact_no']   ?? null,
-            'address'      => $row['address']      ?? null,
+            'user_id'     => $user->id,
+            'employee_id' => $employeeId,
+            'prefix_name' => $normalized['prefix_name'] ?? null,
+            'first_name'  => $normalized['first_name']  ?? '',
+            'middle_name' => $normalized['middle_name'] ?? null,
+            'last_name'   => $normalized['last_name']   ?? '',
+            'suffix_name' => $normalized['suffix_name'] ?? null,
+            'contact_no'  => $normalized['contact_no']  ?? null,
+            'address'     => $normalized['address']     ?? null,
         ]);
-    }
-
-    public function rules(): array
-    {
-        return [
-            'employee_id' => 'required',
-            'first_name'  => 'required',
-            'last_name'   => 'required',
-        ];
     }
 }

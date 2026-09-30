@@ -144,6 +144,7 @@ function confirmLogout() {
 }
 
 
+
 /* ==========================================
    INITIALIZE EVERYTHING ONCE
 ========================================== */
@@ -179,3 +180,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 });
+
+

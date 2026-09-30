@@ -17,6 +17,7 @@ use App\Models\InterventionQuiz;
 use App\Models\LearningPackage;
 use App\Models\Classes;
 use App\Models\ContentRelease;
+use App\Services\NotificationService;
 use Illuminate\Support\Facades\Storage;
 
 
@@ -61,7 +62,7 @@ class ContentLibraryController extends Controller
 
     public function weeks($grade, $term, $subject)
     {
-        $weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9','Week 10','Week 11','Week 12'];
+        $weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6', 'Week 7', 'Week 8', 'Week 9', 'Week 10', 'Week 11', 'Week 12'];
         return view('teacher.content-library.weeks', compact('grade', 'term', 'subject', 'weeks'));
     }
 
@@ -70,7 +71,7 @@ class ContentLibraryController extends Controller
         return view('teacher.content-library.content', compact('grade', 'term', 'subject', 'week'));
     }
 
-  
+
 
     public function materialsCreate($grade, $term, $subject, $week)
     {
@@ -395,7 +396,7 @@ class ContentLibraryController extends Controller
         return redirect()->route('teacher.content-library.content', [$item->grade_level, $item->term, $item->subject->name, $item->week])
             ->with('success', 'Post-assessment updated.');
     }
-   
+
 
     private function updateInterventionMaterial(Request $request, $item)
     {
@@ -514,17 +515,37 @@ class ContentLibraryController extends Controller
             ->delete();
 
         // Insert new releases
+        // foreach ($data['assignments'] as $assignment) {
+        //     if ($assignment['release_date'] || $assignment['due_date']) {
+        //         ContentRelease::create([
+        //             'teacher_profile_id' => $teacher->id,
+        //             'content_type' => $data['content_type'],
+        //             'content_id' => $data['content_id'],
+        //             'class_id' => $assignment['class_id'],
+        //             'subject_id' => $subjectId,
+        //             'release_date' => $assignment['release_date'] ?? null,
+        //             'due_date' => $assignment['due_date'] ?? null,
+        //         ]);
+        //     }
+        // }
+
         foreach ($data['assignments'] as $assignment) {
             if ($assignment['release_date'] || $assignment['due_date']) {
-                ContentRelease::create([
+                $release = ContentRelease::create([
                     'teacher_profile_id' => $teacher->id,
-                    'content_type' => $data['content_type'],
-                    'content_id' => $data['content_id'],
-                    'class_id' => $assignment['class_id'],
-                    'subject_id' => $subjectId,
-                    'release_date' => $assignment['release_date'] ?? null,
-                    'due_date' => $assignment['due_date'] ?? null,
+                    'content_type'       => $data['content_type'],
+                    'content_id'         => $data['content_id'],
+                    'class_id'           => $assignment['class_id'],
+                    'subject_id'         => $subjectId,
+                    'release_date'       => $assignment['release_date'] ?? null,
+                    'due_date'           => $assignment['due_date'] ?? null,
                 ]);
+
+                // 🔔 Notify all enrolled students
+                $contentTitle = $this->resolveContentTitle($data['content_type'], $data['content_id']);
+                $typeSlug     = $this->resolveContentTypeSlug($data['content_type']);
+
+                NotificationService::notifyContentReleased($release, $contentTitle, $typeSlug);
             }
         }
 
@@ -532,6 +553,37 @@ class ContentLibraryController extends Controller
     }
 
 
+    private function resolveContentTitle(string $contentType, int $contentId): string
+{
+    $model = match ($contentType) {
+        'learningMaterial'      => ContentItem::find($contentId),
+        'preAssessment'         => PreAssessment::find($contentId),
+        'postAssessment'        => PostAssessment::find($contentId),
+        'interventionMaterial'  => InterventionMaterial::find($contentId),
+        'interventionVideo'     => InterventionVideo::find($contentId),
+        'interventionQuiz'      => InterventionQuiz::find($contentId),
+        default                 => null,
+    };
+
+    if (!$model) return 'New content';
+
+    return $model->title
+        ?? $model->file_name
+        ?? 'New ' . $this->resolveContentTypeSlug($contentType);
+}
+
+private function resolveContentTypeSlug(string $contentType): string
+{
+    return match ($contentType) {
+        'learningMaterial'      => 'material',
+        'preAssessment'         => 'pre',
+        'postAssessment'        => 'post',
+        'interventionMaterial'  => 'intervention',
+        'interventionVideo'     => 'intervention',
+        'interventionQuiz'      => 'quiz',
+        default                 => 'material',
+    };
+}
 
     public function getWeekReleases($grade, $term, $subject, $week)
     {

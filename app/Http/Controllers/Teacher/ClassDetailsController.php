@@ -11,6 +11,7 @@ use App\Models\PostAssessment;
 use App\Models\InterventionQuiz;
 use App\Models\SchoolYear;
 use Illuminate\Http\Request;
+use App\Models\StudentClassRecord;
 
 class ClassDetailsController extends Controller
 {
@@ -165,9 +166,9 @@ class ClassDetailsController extends Controller
 
             $fullName = trim(
                 ($studentProfile->first_name ?? '') . ' ' .
-                ($studentProfile->middle_name ? $studentProfile->middle_name . ' ' : '') .
-                ($studentProfile->last_name ?? '') .
-                ($studentProfile->suffix_name ? ' ' . $studentProfile->suffix_name : '')
+                    ($studentProfile->middle_name ? $studentProfile->middle_name . ' ' : '') .
+                    ($studentProfile->last_name ?? '') .
+                    ($studentProfile->suffix_name ? ' ' . $studentProfile->suffix_name : '')
             ) ?: 'Unknown';
 
             $latestPre = StudentContentProgress::where('student_profile_id', $studentProfile->id)
@@ -233,5 +234,26 @@ class ClassDetailsController extends Controller
             'App\\Models\\InterventionQuiz' => 'intervention',
             default                          => 'unknown',
         };
+    }
+
+    public function removeStudent($classId, $studentId)
+    {
+        $record = StudentClassRecord::where('class_id', $classId)
+            ->where('student_profile_id', $studentId)
+            ->first();
+
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Student is not enrolled in this class.',
+            ], 404);
+        }
+
+        $record->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Student removed from class.',
+        ]);
     }
 }

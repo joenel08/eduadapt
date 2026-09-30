@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class StudentClassRecord extends Model
 {
-    protected $fillable = ['class_id', 'student_id', 'school_year_id'];
+    protected $fillable = ['class_id', 'student_profile_id', 'school_year_id'];
 
     public function studentProfile()
     {
