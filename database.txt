@@ -1,28 +1,26 @@
-CREATE TABLE `notifications` (
-    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `user_id` BIGINT UNSIGNED NOT NULL,
-    `type` VARCHAR(255) NOT NULL,
-    `title` VARCHAR(255) NOT NULL,
-    `message` TEXT NOT NULL,
-    `link` VARCHAR(255) NULL,
-    `icon` VARCHAR(255) NOT NULL DEFAULT 'fa-bell',
-    `color` VARCHAR(255) NOT NULL DEFAULT 'blue',
-    `available_at` TIMESTAMP NULL,
-    `read_at` TIMESTAMP NULL,
-    `created_at` TIMESTAMP NULL,
-    `updated_at` TIMESTAMP NULL,
+DROP TABLE IF EXISTS `teacher_class_assignments`;
 
-    PRIMARY KEY (`id`),
-
-    INDEX `notifications_user_id_read_at_index` (`user_id`, `read_at`),
-    INDEX `notifications_user_id_available_at_index` (`user_id`, `available_at`),
-
-    CONSTRAINT `notifications_user_id_foreign`
-        FOREIGN KEY (`user_id`)
-        REFERENCES `users` (`id`)
-        ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-
-SELECT id, user_id, title, available_at, NOW() AS current_time
-FROM notifications;
+CREATE TABLE `teacher_class_assignments` (
+    `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `teacher_profile_id` BIGINT(20) UNSIGNED NOT NULL,
+    `class_id` BIGINT(20) UNSIGNED NOT NULL,
+    `subject_id` BIGINT(20) UNSIGNED NULL DEFAULT NULL,
+    `created_at` TIMESTAMP NULL DEFAULT NULL,
+    `updated_at` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `teacher_class_subject_unique` (`teacher_profile_id`, `class_id`, `subject_id`) USING BTREE,
+    INDEX `tca_teacher_profile_id_index` (`teacher_profile_id`) USING BTREE,
+    INDEX `teacher_class_assignments_class_id_foreign` (`class_id`) USING BTREE,
+    INDEX `teacher_class_assignments_subject_id_foreign` (`subject_id`) USING BTREE,
+    CONSTRAINT `teacher_class_assignments_teacher_profile_id_foreign` 
+        FOREIGN KEY (`teacher_profile_id`) REFERENCES `teacher_profiles` (`id`) 
+        ON UPDATE NO ACTION ON DELETE CASCADE,
+    CONSTRAINT `teacher_class_assignments_class_id_foreign` 
+        FOREIGN KEY (`class_id`) REFERENCES `classes` (`id`) 
+        ON UPDATE NO ACTION ON DELETE CASCADE,
+    CONSTRAINT `teacher_class_assignments_subject_id_foreign` 
+        FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) 
+        ON UPDATE NO ACTION ON DELETE CASCADE
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB;

@@ -5,9 +5,26 @@
 
 @php
     $settings = $item->settings ?? [];
-    $timerParts = explode(':', $settings['timer'] ?? '00:00:00');
+    if (is_string($settings)) {
+        $decoded = json_decode($settings, true);
+        $settings = is_array($decoded) ? $decoded : [];
+    }
+
     $questions = $item->questions ?? [];
-    $editing = true;
+    if (is_string($questions)) {
+        $decoded = json_decode($questions, true);
+        $questions = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
+    }
+    if (!is_array($questions)) $questions = [];
+
+    $timer = $settings['timer'] ?? '00:00:00';
+    $timerParts = explode(':', $timer);
+    $hours   = isset($timerParts[0]) ? (int) $timerParts[0] : 0;
+    $minutes = isset($timerParts[1]) ? (int) $timerParts[1] : 0;
+    $seconds = isset($timerParts[2]) ? (int) $timerParts[2] : 0;
+
+    $questionsJson = json_encode($questions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $settingsJson  = json_encode($settings,  JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 @endphp
 
 @section('content')
@@ -23,19 +40,38 @@
     </div>
     <div class="week-subheader">Update your Intervention Quiz</div>
 
+    {{-- ✅ FIX: error / success feedback --}}
+    @if ($errors->any())
+        <div class="message-box" style="background:#ffe4e6;color:#991b1b;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            <ul style="margin:0;padding-left:18px;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    @if (session('success'))
+        <div class="message-box" style="background:#eef2ff;color:#1d4ed8;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
-            <form id="quizForm" 
-                  action="{{ route('teacher.content-library.update', [$grade, $term, $subject, $week, 'interventionQuiz', $item->id]) }}" 
+            <form id="quizForm"
+                  action="{{ route('teacher.content-library.update', [$grade, $term, $subject, $week, 'interventionQuiz', $item->id]) }}"
                   method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
+
+                {{-- ✅ hidden input_method --}}
+                <input type="hidden" name="input_method" id="inputMethodInput" value="{{ $item->input_method ?? 'manual' }}">
 
                 {{-- Level --}}
                 <div class="form-group">
                     <label for="level">Level:</label>
                     <select name="level" id="level" class="form-control">
-                        <option value="basic" {{ ($item->level ?? '') == 'basic' ? 'selected' : '' }}>Basic</option>
+                        <option value="basic"    {{ ($item->level ?? '') == 'basic'    ? 'selected' : '' }}>Basic</option>
                         <option value="standard" {{ ($item->level ?? '') == 'standard' ? 'selected' : '' }}>Standard</option>
                         <option value="advanced" {{ ($item->level ?? '') == 'advanced' ? 'selected' : '' }}>Advanced</option>
                     </select>
@@ -45,14 +81,14 @@
                 <div class="form-group">
                     <label for="exam_type">Exam Type:</label>
                     <select name="exam_type" id="exam_type" class="form-control">
-                        <option value="multipleChoice" {{ $item->exam_type == 'multipleChoice' ? 'selected' : '' }}>Multiple Choice</option>
-                        <option value="trueFalse" {{ $item->exam_type == 'trueFalse' ? 'selected' : '' }}>True or False</option>
-                        <option value="matchingType" {{ $item->exam_type == 'matchingType' ? 'selected' : '' }}>Matching Type</option>
-                        <option value="mixed" {{ $item->exam_type == 'mixed' ? 'selected' : '' }}>Mixed (Combined)</option>
+                        <option value="multipleChoice" {{ ($item->exam_type ?? '') == 'multipleChoice' ? 'selected' : '' }}>Multiple Choice</option>
+                        <option value="trueFalse"      {{ ($item->exam_type ?? '') == 'trueFalse'      ? 'selected' : '' }}>True or False</option>
+                        <option value="matchingType"   {{ ($item->exam_type ?? '') == 'matchingType'   ? 'selected' : '' }}>Matching Type</option>
+                        <option value="mixed"          {{ ($item->exam_type ?? '') == 'mixed'          ? 'selected' : '' }}>Mixed (Combined)</option>
                     </select>
                 </div>
 
-                {{-- Input Method Information --}}
+                {{-- Input method info --}}
                 <div class="input-method-tabs">
                     <div class="input-method-tab active">
                         @if(($item->input_method ?? 'upload') === 'upload')
@@ -63,20 +99,18 @@
                     </div>
                 </div>
 
-                {{-- Uploaded File Information --}}
                 @if(($item->input_method ?? '') === 'upload')
                     <div class="form-group">
                         <label>Uploaded File:</label>
                         <p><strong>{{ $item->file_name ?? 'None' }}</strong></p>
-                        <p class="text-muted" style="font-size:12px;">File cannot be changed here. Delete and recreate the quiz if you need to replace the file.</p>
+                        <p class="text-muted" style="font-size:12px;">File cannot be changed here.</p>
                     </div>
                 @endif
 
-                {{-- Questions – Editable (same as pre-assessment) --}}
+                {{-- Questions --}}
                 <div class="form-group">
                     <label style="font-size:18px; font-weight:700; display:block; margin-bottom:15px;">Questions</label>
 
-                    {{-- Add Questions Button --}}
                     <div style="display:flex; gap:10px; margin-bottom:20px;">
                         <input type="number" id="questionCount" value="3" min="1" max="50" style="width:100px; padding:8px; border:1px solid #ddd; border-radius:6px;">
                         <button type="button" onclick="generateQuestions()" class="btn btn-save">
@@ -84,18 +118,15 @@
                         </button>
                     </div>
 
-                    <div class="questions-container" id="questionsContainer" style="max-height:500px; overflow-y:auto; padding:10px; background:#f9f9f9; border:1px solid #ddd; border-radius:8px;">
-                        {{-- Existing questions will be populated by JavaScript --}}
-                    </div>
+                    <div class="questions-container" id="questionsContainer" style="max-height:500px; overflow-y:auto; padding:10px; background:#f9f9f9; border:1px solid #ddd; border-radius:8px;"></div>
 
-                    <input type="hidden" name="manual_questions" id="manualQuestionsInput" value="{{ json_encode($questions) }}">
+                    {{-- ✅ single source of truth --}}
+                    <input type="hidden" name="questions" id="questionsInput" value="{{ $questionsJson }}">
                 </div>
 
-                {{-- Hidden inputs for compatibility --}}
-                <input type="hidden" name="questions" id="questionsInput" value="{{ json_encode($questions) }}">
-                <input type="hidden" name="settings" id="settingsInput" value="{{ json_encode($settings) }}">
+                <input type="hidden" name="settings" id="settingsInput" value="{{ $settingsJson }}">
 
-                {{-- Randomization Options --}}
+                {{-- Randomization --}}
                 <div class="randomization-options" id="randomizationOptions">
                     <div class="randomization-options-title">Randomization (for student view)</div>
                     <label class="toggle-line">
@@ -112,11 +143,11 @@
                 <div class="form-group">
                     <label>Timer (HH:MM:SS):</label>
                     <div class="time-picker-group">
-                        <input type="number" name="hours" placeholder="HH" min="0" max="23" value="{{ $timerParts[0] ?? 0 }}" style="max-width:80px;">
+                        <input type="number" name="hours"   min="0" max="23" value="{{ $hours }}"   style="max-width:80px;">
                         <span class="time-unit">:</span>
-                        <input type="number" name="minutes" placeholder="MM" min="0" max="59" value="{{ $timerParts[1] ?? 0 }}" style="max-width:80px;">
+                        <input type="number" name="minutes" min="0" max="59" value="{{ $minutes }}" style="max-width:80px;">
                         <span class="time-unit">:</span>
-                        <input type="number" name="seconds" placeholder="SS" min="0" max="59" value="{{ $timerParts[2] ?? 0 }}" style="max-width:80px;">
+                        <input type="number" name="seconds" min="0" max="59" value="{{ $seconds }}" style="max-width:80px;">
                     </div>
                 </div>
 
@@ -138,29 +169,25 @@
 
 @push('scripts')
 <script>
-    // ===== All the JavaScript from pre-assessment-edit.blade.php =====
-    // But change the form ID in the submit handler from 'preAssessmentForm' to 'quizForm'
-    // === BEGIN JAVASCRIPT ===
-    /**
-     * ============================================================
-     * 1. GLOBAL STATE
-     * ============================================================
-     */
     const examTypeSelect = document.getElementById('exam_type');
     const isMixed = () => examTypeSelect.value === 'mixed';
     const getDefaultType = () => isMixed() ? 'multipleChoice' : examTypeSelect.value;
 
-    /**
-     * ============================================================
-     * 2. GENERATE QUESTION HTML
-     * ============================================================
-     */
+    function escapeAttr(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function generateQuestionHtml(qNum, questionType, data) {
         data = data || {};
         const type = questionType || getDefaultType();
         const isMixedMode = isMixed();
+        const choices = Array.isArray(data.choices) ? data.choices : [];
+        const choiceImages = Array.isArray(data.choiceImages) ? data.choiceImages : [];
+        const correctAnswer = data.correctAnswer ? String(data.correctAnswer).trim() : '';
 
-        let html = `
+        return `
             <div class="question-item" data-q="${qNum}" data-question-type="${type}">
                 <div class="question-item-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <span style="font-weight:700;">Question ${qNum}</span>
@@ -180,7 +207,7 @@
 
                 <div class="question-input-group" style="margin-bottom:10px;">
                     <label style="display:block; font-weight:600; font-size:13px;">Question Text:</label>
-                    <input type="text" class="question-input" placeholder="Enter question text" data-q="${qNum}" name="question_text_${qNum}" value="${data.question || ''}" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                    <input type="text" class="question-input" autocomplete="off" placeholder="Enter question text" data-q="${qNum}" name="question_text_${qNum}" value="${escapeAttr(data.question || '')}" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
                 </div>
 
                 <div class="form-group" style="margin-top:6px;">
@@ -194,20 +221,23 @@
                 <!-- Multiple Choice -->
                 <div class="choice-inputs" data-q="${qNum}" style="display: ${type === 'multipleChoice' ? 'block' : 'none'};">
                     <label style="display:block; font-weight:600; font-size:13px; margin-bottom:5px;">Choices:</label>
-                    ${[0,1,2,3].map(ci => `
+                    ${[0,1,2,3].map(ci => {
+                        const val = choices[ci] || '';
+                        const isCorrect = correctAnswer && val && correctAnswer.toLowerCase() === val.toLowerCase();
+                        return `
                         <div class="choice-input-row" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
                             <span style="font-weight:600; min-width:20px;">${String.fromCharCode(65 + ci)}.</span>
-                            <input type="text" class="choice-input" placeholder="Choice ${String.fromCharCode(65 + ci)}" data-q="${qNum}" data-choice="${ci}" name="choice_text_${qNum}_${ci}" value="${data.choices && data.choices[ci] ? data.choices[ci] : ''}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
+                            <input type="text" class="choice-input" autocomplete="off" placeholder="Choice ${String.fromCharCode(65 + ci)}" data-q="${qNum}" data-choice="${ci}" name="choice_text_${qNum}_${ci}" value="${escapeAttr(val)}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
                             <input type="file" class="choice-image-input" accept="image/*" name="choice_image_${qNum}_${ci}" style="flex:0.6; padding:4px; font-size:12px;">
                             <div class="choice-image-preview" style="margin-left:4px;">
-                                ${data.choiceImages && data.choiceImages[ci] ? `<img src="${data.choiceImages[ci]}" style="max-height:40px; border-radius:4px; border:1px solid #ddd;">` : ''}
+                                ${choiceImages[ci] ? `<img src="${choiceImages[ci]}" style="max-height:40px; border-radius:4px; border:1px solid #ddd;">` : ''}
                             </div>
                             <label class="correct-choice-marker" style="display:flex; align-items:center; gap:4px; cursor:pointer;">
-                                <input type="radio" name="correct_${qNum}" class="correct-choice-radio" value="${ci}" onchange="updateCorrectIndicator(this)" ${data.correctAnswer && data.correctAnswer === (data.choices && data.choices[ci] ? data.choices[ci] : '') ? 'checked' : ''}>
-                                <span class="correct-indicator">${data.correctAnswer && data.correctAnswer === (data.choices && data.choices[ci] ? data.choices[ci] : '') ? '(●)' : '( )'}</span>
+                                <input type="radio" name="correct_${qNum}" class="correct-choice-radio" value="${ci}" onchange="updateCorrectIndicator(this)" ${isCorrect ? 'checked' : ''}>
+                                <span class="correct-indicator">${isCorrect ? '(●)' : '( )'}</span>
                             </label>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
 
                 <!-- True/False -->
@@ -226,21 +256,14 @@
                 <div class="matching-inputs" data-q="${qNum}" style="display: ${type === 'matchingType' ? 'block' : 'none'};">
                     <label style="display:block; font-weight:600; font-size:13px; margin-bottom:5px;">Matching Pairs:</label>
                     <div class="matching-pairs">
-                        ${data.pairs && data.pairs.length ? data.pairs.map((pair, pi) => `
+                        ${(data.pairs && data.pairs.length ? data.pairs : [{question:'',answer:''}]).map((pair, pi) => `
                             <div class="matching-pair" data-pair="${pi+1}" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                                <input type="text" class="matching-left-input" placeholder="Left item" data-q="${qNum}" data-pair="${pi+1}" name="matching_left_${qNum}_${pi+1}" value="${pair.question || pair.left || ''}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
+                                <input type="text" class="matching-left-input" autocomplete="off" placeholder="Left item" data-q="${qNum}" data-pair="${pi+1}" name="matching_left_${qNum}_${pi+1}" value="${escapeAttr(pair.question || pair.left || '')}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
                                 <span style="font-weight:bold;">↔</span>
-                                <input type="text" class="matching-right-input" placeholder="Right item" data-q="${qNum}" data-pair="${pi+1}" name="matching_right_${qNum}_${pi+1}" value="${pair.answer || pair.right || ''}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
+                                <input type="text" class="matching-right-input" autocomplete="off" placeholder="Right item" data-q="${qNum}" data-pair="${pi+1}" name="matching_right_${qNum}_${pi+1}" value="${escapeAttr(pair.answer || pair.right || '')}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
                                 <button type="button" class="remove-pair" onclick="removeMatchingPair(this)" style="background:#ff6b6b; color:white; border:none; border-radius:4px; padding:2px 6px; cursor:pointer;">✕</button>
                             </div>
-                        `).join('') : `
-                            <div class="matching-pair" data-pair="1" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                                <input type="text" class="matching-left-input" placeholder="Left item" data-q="${qNum}" data-pair="1" name="matching_left_${qNum}_1" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
-                                <span style="font-weight:bold;">↔</span>
-                                <input type="text" class="matching-right-input" placeholder="Right item" data-q="${qNum}" data-pair="1" name="matching_right_${qNum}_1" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
-                                <button type="button" class="remove-pair" onclick="removeMatchingPair(this)" style="background:#ff6b6b; color:white; border:none; border-radius:4px; padding:2px 6px; cursor:pointer;">✕</button>
-                            </div>
-                        `}
+                        `).join('')}
                     </div>
                     <button type="button" class="add-matching-pair" data-q="${qNum}" onclick="addMatchingPair(this)" style="margin-top:6px; padding:4px 12px; background:#0066CC; color:white; border:none; border-radius:4px; cursor:pointer;">+ Add Pair</button>
                 </div>
@@ -248,23 +271,15 @@
                 <hr style="margin: 12px 0;">
             </div>
         `;
-        return html;
     }
 
-    /**
-     * ============================================================
-     * 3. POPULATE EXISTING QUESTIONS
-     * ============================================================
-     */
     function populateQuestions(questions) {
         const container = document.getElementById('questionsContainer');
         container.innerHTML = '';
-
         if (!questions || !questions.length) {
             container.innerHTML = '<p style="padding:20px; text-align:center; color:#999;">No questions. Click "Add Questions" to create some.</p>';
             return;
         }
-
         let html = '';
         questions.forEach((q, idx) => {
             const qNum = idx + 1;
@@ -272,68 +287,47 @@
             html += generateQuestionHtml(qNum, type, q);
         });
         container.innerHTML = html;
-
         attachPreviewHandlers(container);
         container.querySelectorAll('.correct-choice-radio').forEach(radio => {
-            radio.addEventListener('change', function() {
-                updateCorrectIndicator(this);
-            });
+            radio.addEventListener('change', function() { updateCorrectIndicator(this); });
         });
     }
 
-    /**
-     * ============================================================
-     * 4. GENERATE NEW QUESTIONS
-     * ============================================================
-     */
     function generateQuestions() {
         const count = parseInt(document.getElementById('questionCount').value) || 3;
         const container = document.getElementById('questionsContainer');
         const existingCount = container.querySelectorAll('.question-item').length;
         let html = '';
         for (let i = 1; i <= count; i++) {
-            const qNum = existingCount + i;
-            const type = getDefaultType();
-            html += generateQuestionHtml(qNum, type, {});
+            html += generateQuestionHtml(existingCount + i, getDefaultType(), {});
         }
         container.insertAdjacentHTML('beforeend', html);
         attachPreviewHandlers(container);
         container.querySelectorAll('.correct-choice-radio').forEach(radio => {
-            radio.addEventListener('change', function() {
-                updateCorrectIndicator(this);
-            });
+            radio.addEventListener('change', function() { updateCorrectIndicator(this); });
         });
     }
 
-    /**
-     * ============================================================
-     * 5. HELPER FUNCTIONS
-     * ============================================================
-     */
     function attachPreviewHandlers(container) {
         container.querySelectorAll('.question-image-input').forEach(inp => {
-            inp.addEventListener('change', function(e) {
+            inp.addEventListener('change', function() {
                 const preview = this.closest('.question-item').querySelector('.question-image-preview');
                 preview.innerHTML = '';
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%; max-height:100px; border-radius:4px; border:1px solid #ddd;">`;
-                    };
+                    reader.onload = ev => { preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%; max-height:100px; border-radius:4px; border:1px solid #ddd;">`; };
                     reader.readAsDataURL(this.files[0]);
                 }
             });
         });
         container.querySelectorAll('.choice-image-input').forEach(inp => {
-            inp.addEventListener('change', function(e) {
+            inp.addEventListener('change', function() {
                 const parent = this.closest('.choice-input-row');
                 const preview = parent.querySelector('.choice-image-preview');
                 preview.innerHTML = '';
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
-                        preview.innerHTML = `<img src="${ev.target.result}" style="max-height:40px; border-radius:4px; border:1px solid #ddd;">`;
-                    };
+                    reader.onload = ev => { preview.innerHTML = `<img src="${ev.target.result}" style="max-height:40px; border-radius:4px; border:1px solid #ddd;">`; };
                     reader.readAsDataURL(this.files[0]);
                 }
             });
@@ -342,23 +336,20 @@
 
     function removeQuestion(btn) {
         const item = btn.closest('.question-item');
-        if (item && item.parentElement.querySelectorAll('.question-item').length > 1) {
-            item.remove();
-        } else {
-            alert('You need at least one question.');
-        }
+        if (item && item.parentElement.querySelectorAll('.question-item').length > 1) item.remove();
+        else alert('You need at least one question.');
     }
 
     function onQuestionTypeChange(select) {
         const item = select.closest('.question-item');
         const type = select.value;
         item.dataset.questionType = type;
-        const choiceSection = item.querySelector('.choice-inputs');
-        const tfSection = item.querySelector('.truefalse-inputs');
-        const matchSection = item.querySelector('.matching-inputs');
-        if (choiceSection) choiceSection.style.display = (type === 'multipleChoice') ? 'block' : 'none';
-        if (tfSection) tfSection.style.display = (type === 'trueFalse') ? 'block' : 'none';
-        if (matchSection) matchSection.style.display = (type === 'matchingType') ? 'block' : 'none';
+        const sections = {
+            multipleChoice: item.querySelector('.choice-inputs'),
+            trueFalse:      item.querySelector('.truefalse-inputs'),
+            matchingType:   item.querySelector('.matching-inputs'),
+        };
+        Object.entries(sections).forEach(([k, el]) => { if (el) el.style.display = (k === type) ? 'block' : 'none'; });
     }
 
     function updateCorrectIndicator(radio) {
@@ -378,9 +369,9 @@
         newPair.className = 'matching-pair';
         newPair.dataset.pair = pairCount;
         newPair.innerHTML = `
-            <input type="text" class="matching-left-input" placeholder="Left item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_left_${qIndex}_${pairCount}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
+            <input type="text" class="matching-left-input" autocomplete="off" placeholder="Left item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_left_${qIndex}_${pairCount}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
             <span style="font-weight:bold;">↔</span>
-            <input type="text" class="matching-right-input" placeholder="Right item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_right_${qIndex}_${pairCount}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
+            <input type="text" class="matching-right-input" autocomplete="off" placeholder="Right item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_right_${qIndex}_${pairCount}" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:6px;">
             <button type="button" class="remove-pair" onclick="removeMatchingPair(this)" style="background:#ff6b6b; color:white; border:none; border-radius:4px; padding:2px 6px; cursor:pointer;">✕</button>
         `;
         pairsContainer.appendChild(newPair);
@@ -388,20 +379,34 @@
 
     function removeMatchingPair(btn) {
         const pair = btn.closest('.matching-pair');
-        if (pair && pair.parentElement.children.length > 1) {
-            pair.remove();
-        } else {
-            alert('At least one pair is required.');
-        }
+        if (pair && pair.parentElement.children.length > 1) pair.remove();
+        else alert('At least one pair is required.');
     }
 
-    /**
-     * ============================================================
-     * 6. ON FORM SUBMIT – COLLECT QUESTIONS
-     * ============================================================
-     */
-    // FIXED: Use 'quizForm' instead of 'preAssessmentForm'
+    // ============================================================
+    // ✅ FIX: build settings JSON including due_date
+    // ============================================================
+    function buildSettingsJson() {
+        const pad = n => String(n).padStart(2, '0');
+        const h = parseInt(document.querySelector('input[name="hours"]').value || 0, 10);
+        const m = parseInt(document.querySelector('input[name="minutes"]').value || 0, 10);
+        const s = parseInt(document.querySelector('input[name="seconds"]').value || 0, 10);
+        const dueDate = document.getElementById('due_date').value || null;
+
+        return JSON.stringify({
+            timer: `${pad(h)}:${pad(m)}:${pad(s)}`,
+            shuffle_questions: !!document.querySelector('input[name="shuffle_questions"]').checked,
+            shuffle_choices:   !!document.querySelector('input[name="shuffle_choices"]').checked,
+            due_date: dueDate,
+        });
+    }
+
+    // ============================================================
+    // ✅ FIX: submit — rebuild settings + questions
+    // ============================================================
     document.getElementById('quizForm').addEventListener('submit', function(e) {
+        document.getElementById('settingsInput').value = buildSettingsJson();
+
         const container = document.getElementById('questionsContainer');
         const items = container.querySelectorAll('.question-item');
         const questions = [];
@@ -410,94 +415,64 @@
         items.forEach((item, idx) => {
             const qType = item.dataset.questionType || 'multipleChoice';
             const qText = item.querySelector('.question-input')?.value.trim() || '';
-            if (!qText) {
-                alert(`Question ${idx+1} is missing text.`);
-                hasError = true;
-                return;
-            }
+            if (!qText) { alert(`Question ${idx+1} is missing text.`); hasError = true; return; }
 
-            const qNum = item.dataset.q;
-            let questionData = {
-                type: qType,
-                question: qText,
-                image: null
-            };
+            const questionData = { type: qType, question: qText, image: null };
 
             if (qType === 'multipleChoice') {
-                const choiceInputs = item.querySelectorAll('.choice-input');
-                const choices = [];
-                choiceInputs.forEach(inp => {
-                    const val = inp.value.trim();
-                    if (val) choices.push(val);
-                });
-                if (choices.length < 2) {
+                // ✅ preserve slots
+                const choices = Array.from(item.querySelectorAll('.choice-input'))
+                    .map(inp => inp.value.trim());
+
+                if (choices.filter(Boolean).length < 2) {
                     alert(`Question ${idx+1} needs at least two choices.`);
-                    hasError = true;
-                    return;
+                    hasError = true; return;
                 }
                 const radio = item.querySelector('.correct-choice-radio:checked');
-                let correctIndex = -1;
-                if (radio) correctIndex = parseInt(radio.value, 10);
-                if (correctIndex === -1 || correctIndex >= choices.length) {
-                    alert(`Question ${idx+1} needs a correct answer selected.`);
-                    hasError = true;
-                    return;
+                if (!radio) { alert(`Question ${idx+1} needs a correct answer selected.`); hasError = true; return; }
+                const correctIndex = parseInt(radio.value, 10);
+                if (!choices[correctIndex]) {
+                    alert(`Question ${idx+1}: the choice marked as correct is empty.`);
+                    hasError = true; return;
                 }
                 questionData.choices = choices;
                 questionData.choiceImages = [];
                 questionData.correctAnswer = choices[correctIndex];
+                questionData.correctIndex = correctIndex;
+
             } else if (qType === 'trueFalse') {
-                const answerSelect = item.querySelector('.manual-answer-input');
-                const correctAnswer = answerSelect ? answerSelect.value : '';
-                if (!correctAnswer) {
-                    alert(`Question ${idx+1} needs a correct answer (True/False).`);
-                    hasError = true;
-                    return;
-                }
+                const correctAnswer = item.querySelector('.manual-answer-input')?.value || '';
+                if (!correctAnswer) { alert(`Question ${idx+1} needs a correct answer (True/False).`); hasError = true; return; }
                 questionData.choices = ['True', 'False'];
                 questionData.correctAnswer = correctAnswer;
+
             } else if (qType === 'matchingType') {
                 const pairs = [];
-                const pairElements = item.querySelectorAll('.matching-pair');
-                pairElements.forEach(pair => {
+                item.querySelectorAll('.matching-pair').forEach(pair => {
                     const left = pair.querySelector('.matching-left-input')?.value.trim() || '';
                     const right = pair.querySelector('.matching-right-input')?.value.trim() || '';
-                    if (left && right) {
-                        pairs.push({ question: left, answer: right });
-                    }
+                    if (left && right) pairs.push({ question: left, answer: right });
                 });
-                if (pairs.length === 0) {
-                    alert(`Question ${idx+1} needs at least one matching pair.`);
-                    hasError = true;
-                    return;
-                }
+                if (!pairs.length) { alert(`Question ${idx+1} needs at least one matching pair.`); hasError = true; return; }
                 questionData.pairs = pairs;
             }
 
             questions.push(questionData);
         });
 
-        if (hasError) {
-            e.preventDefault();
-            return;
-        }
+        if (hasError) { e.preventDefault(); return; }
 
-        document.getElementById('manualQuestionsInput').value = JSON.stringify(questions);
         document.getElementById('questionsInput').value = JSON.stringify(questions);
     });
 
-    /**
-     * ============================================================
-     * 7. INITIALIZE
-     * ============================================================
-     */
+    // Init
     (function() {
         const existingQuestions = @json($questions);
         populateQuestions(existingQuestions);
     })();
 
-    document.getElementById('exam_type').addEventListener('change', function() {
-        // No re-render needed for existing questions
+    examTypeSelect.addEventListener('change', function() {
+        // existing questions keep their own types
     });
 </script>
 @endpush

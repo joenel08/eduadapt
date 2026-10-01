@@ -165,7 +165,7 @@
         <div class="overview-card">
             <div class="card-icon blue"><i class="fas fa-book"></i></div>
             <div class="card-label">Total Classes</div>
-            <div class="card-value">{{ $classes->count() }}</div>
+            <div class="card-value">{{ $assignments->count() }}</div>
         </div>
         <div class="overview-card">
             <div class="card-icon green"><i class="fas fa-users"></i></div>

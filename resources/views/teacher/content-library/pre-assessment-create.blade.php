@@ -16,19 +16,27 @@
     </div>
     <div class="week-subheader">Manage your Pre-Assessment Exam</div>
 
+    {{-- ✅ FIX: show validation errors so failures aren't silent --}}
+    @if ($errors->any())
+        <div class="message-box" style="background:#ffe4e6;color:#991b1b;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            <ul style="margin:0;padding-left:18px;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @if (session('success'))
+        <div class="message-box" style="background:#eef2ff;color:#1d4ed8;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
             <form id="preAssessmentForm" action="{{ route('teacher.content-library.pre-assessment.store', [$grade, $term, $subject, $week]) }}" method="POST" enctype="multipart/form-data">
                 @csrf
-
-                <!-- <div class="form-group">
-                    <label for="status">Status:</label>
-                    <select name="status" id="status" class="form-control">
-                        <option value="open" {{ old('status') == 'open' ? 'selected' : '' }}>Open</option>
-                        <option value="updating" {{ old('status') == 'updating' ? 'selected' : '' }}>Updating</option>
-                    </select>
-                    <small style="color:#888;">Closed automatically when due date passes.</small>
-                </div> -->
 
                 <div class="form-group">
                     <label for="exam_type">Exam Type:</label>
@@ -55,8 +63,6 @@
                         <div id="uploadFormatHint" class="excel-format-hint"></div>
                         <p id="uploadInstruction" class="upload-instruction"></p>
 
-                        <!-- NEW: Download Template Buttons -->
-                        <!-- Download Template Buttons – only the one matching exam_type shows -->
                         <div class="template-download-buttons" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;margin-top: 12px;">
                             <button type="button" class="btn btn-publish btn-sm template-dl-btn" data-type="multipleChoice" style="display:none;" onclick="downloadTemplate('multipleChoice')">
                                 <i class="fas fa-file-download"></i> &nbsp;Download Multiple Choice Template
@@ -84,6 +90,7 @@
                         <span class="text-danger">{{ $message }}</span>
                         @enderror
                     </div>
+                    {{-- ✅ FIX: this is the ONLY input that carries "questions" to the server --}}
                     <input type="hidden" name="questions" id="questionsInput" value="{{ old('questions') }}">
                 </div>
 
@@ -96,8 +103,15 @@
                         <i class="fas fa-magic"></i> Add Questions
                     </button>
                     <div class="questions-container" id="questionsContainer"></div>
-                    <input type="hidden" name="manual_questions" id="manualQuestionsInput" value="{{ old('manual_questions') }}">
+                    {{-- ✅ FIX: no name attribute → won't be submitted (dead input, kept for safety) --}}
+                    <input type="hidden" id="manualQuestionsInput" value="{{ old('manual_questions') }}">
                 </div>
+
+                {{-- ✅ FIX: hidden input carrying the settings JSON --}}
+                <input type="hidden" name="settings" id="settingsInput" value="{{ old('settings') }}">
+
+                {{-- ✅ FIX: hidden input telling the server which method was used --}}
+                <input type="hidden" name="input_method" id="inputMethodInput" value="{{ old('input_method', 'upload') }}">
 
                 <div class="randomization-options" id="randomizationOptions">
                     <div class="randomization-options-title">Randomization (for student view)</div>
@@ -122,20 +136,9 @@
                     </div>
                 </div>
 
-                <!-- <div class="form-group">
-                    <label for="due_date">Due Date:</label>
-                    <input type="date" name="due_date" id="due_date" class="form-control" value="{{ old('due_date') }}">
-                </div> -->
-
                 <div class="modal-buttons">
-
                     <button type="submit" class="btn btn-save">Save Pre-Assessment</button>
                     <a href="{{ route('teacher.content-library.weeks', [$grade, $term, $subject]) }}" class="btn btn-cancel">Cancel</a>
-
-
-
-
-
                 </div>
             </form>
         </div>
@@ -158,6 +161,8 @@
         document.querySelectorAll('.input-method-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.method === method);
         });
+        // ✅ FIX: keep the hidden input_method field in sync
+        document.getElementById('inputMethodInput').value = method;
         updateRandomizationVisibility();
     }
 
@@ -172,11 +177,6 @@
             shuffleChoicesRow.style.display = 'flex';
         }
     }
-
-    document.getElementById('exam_type').addEventListener('change', function() {
-        updateRandomizationVisibility();
-        renderUploadFormatHint(this.value);
-    });
 
     // ============================================================
     // 2. Upload Format Hint (Excel)
@@ -262,7 +262,10 @@
                     question: row[0] || 'Sample',
                     correctAnswer: row[1] || ''
                 }));
+                // ✅ FIX: single source of truth → #questionsInput
                 questionsInput.value = JSON.stringify(qs);
+                // ✅ FIX: clear the manual-side hidden field so only one is sent
+                document.getElementById('manualQuestionsInput').value = '';
                 previewEl.innerHTML = `<strong>${qs.length} question(s) loaded successfully.</strong>`;
                 previewEl.style.display = 'block';
             } catch (err) {
@@ -303,7 +306,7 @@
                 </div>
 
                 <div class="question-input-group">
-                    <input type="text" class="question-input" placeholder="Enter question text" data-q="${qNum}" name="question_text_${qNum}">
+                   <input type="text" class="question-input" autocomplete="off" placeholder="Enter question text" data-q="${qNum}" name="question_text_${qNum}">
                 </div>
 
                 <div class="form-group" style="margin-top:6px;">
@@ -317,7 +320,7 @@
                     ${[0,1,2,3].map(ci => `
                     <div class="choice-input-row">
                         <span>${String.fromCharCode(65 + ci)}.</span>
-                        <input type="text" class="choice-input" placeholder="Choice ${String.fromCharCode(65 + ci)}" data-q="${qNum}" data-choice="${ci}" name="choice_text_${qNum}_${ci}">
+                   <input type="text" class="choice-input" autocomplete="off" placeholder="Choice ${String.fromCharCode(65 + ci)}" data-q="${qNum}" data-choice="${ci}" name="choice_text_${qNum}_${ci}">
                         <input type="file" class="choice-image-input" accept="image/*" name="choice_image_${qNum}_${ci}" style="flex:0.6; padding:4px; font-size:12px;">
                         <div class="choice-image-preview" style="margin-left:4px;"></div>
                         <label class="correct-choice-marker">
@@ -359,7 +362,6 @@
         }
         container.insertAdjacentHTML('beforeend', html);
 
-        // Attach preview handlers for file inputs
         container.querySelectorAll('.question-image-input').forEach(inp => {
             inp.addEventListener('change', function(e) {
                 const preview = this.closest('.question-item').querySelector('.question-image-preview');
@@ -387,7 +389,6 @@
                 }
             });
         });
-        // Update radio indicators
         container.querySelectorAll('.correct-choice-radio').forEach(radio => {
             radio.addEventListener('change', function() {
                 updateCorrectIndicator(this);
@@ -454,9 +455,31 @@
     }
 
     // ============================================================
-    // 6. On form submit: build JSON from manual inputs
+    // 6. Build settings JSON
+    // ============================================================
+    function buildSettingsJson() {
+        const pad = n => String(n).padStart(2, '0');
+        const h = parseInt(document.querySelector('input[name="hours"]').value || 0, 10);
+        const m = parseInt(document.querySelector('input[name="minutes"]').value || 0, 10);
+        const s = parseInt(document.querySelector('input[name="seconds"]').value || 0, 10);
+
+        const settings = {
+            timer: `${pad(h)}:${pad(m)}:${pad(s)}`,
+            shuffle_questions: !!document.querySelector('input[name="shuffle_questions"]').checked,
+            shuffle_choices:   !!document.querySelector('input[name="shuffle_choices"]').checked,
+        };
+        return JSON.stringify(settings);
+    }
+
+    // ============================================================
+    // 7. On form submit: build JSON from manual inputs + settings
     // ============================================================
     document.getElementById('preAssessmentForm').addEventListener('submit', function(e) {
+        // ✅ FIX: always populate settings
+        document.getElementById('settingsInput').value = buildSettingsJson();
+        // ✅ FIX: make sure input_method is up-to-date
+        document.getElementById('inputMethodInput').value = currentMethod;
+
         if (currentMethod === 'manual') {
             const container = document.getElementById('questionsContainer');
             const items = container.querySelectorAll('.question-item');
@@ -472,37 +495,41 @@
                     return;
                 }
 
-                const qNum = item.dataset.q;
                 let questionData = {
                     type: qType,
                     question: qText,
-                    image: null // will be filled by controller from uploaded file
+                    image: null
                 };
 
-                if (qType === 'multipleChoice') {
-                    const choiceInputs = item.querySelectorAll('.choice-input');
-                    const choices = [];
-                    choiceInputs.forEach(inp => {
-                        const val = inp.value.trim();
-                        if (val) choices.push(val);
-                    });
-                    if (choices.length < 2) {
-                        alert(`Question ${idx+1} needs at least two choices.`);
-                        hasError = true;
-                        return;
-                    }
-                    const radio = item.querySelector('.correct-choice-radio:checked');
-                    let correctIndex = -1;
-                    if (radio) correctIndex = parseInt(radio.value, 10);
-                    if (correctIndex === -1 || correctIndex >= choices.length) {
-                        alert(`Question ${idx+1} needs a correct answer selected.`);
-                        hasError = true;
-                        return;
-                    }
-                    questionData.choices = choices;
-                    questionData.choiceImages = []; // will be filled by controller
-                    questionData.correctAnswer = choices[correctIndex];
-                } else if (qType === 'trueFalse') {
+               if (qType === 'multipleChoice') {
+    const choices = Array.from(item.querySelectorAll('.choice-input'))
+        .map(inp => inp.value.trim());
+
+    const nonEmpty = choices.filter(Boolean).length;
+    if (nonEmpty < 2) {
+        alert(`Question ${idx+1} needs at least two choices.`);
+        hasError = true;
+        return;
+    }
+
+    const radio = item.querySelector('.correct-choice-radio:checked');
+    if (!radio) {
+        alert(`Question ${idx+1} needs a correct answer selected.`);
+        hasError = true;
+        return;
+    }
+    const correctIndex = parseInt(radio.value, 10);
+    if (!choices[correctIndex]) {
+        alert(`Question ${idx+1}: the choice marked as correct is empty.`);
+        hasError = true;
+        return;
+    }
+
+    questionData.choices = choices;
+    questionData.choiceImages = [];
+    questionData.correctAnswer = choices[correctIndex];
+    questionData.correctIndex = correctIndex;
+}else if (qType === 'trueFalse') {
                     const answerSelect = item.querySelector('.manual-answer-input');
                     const correctAnswer = answerSelect ? answerSelect.value : '';
                     if (!correctAnswer) {
@@ -541,19 +568,17 @@
                 return;
             }
 
-            // Set the JSON in the hidden input
-            document.getElementById('manualQuestionsInput').value = JSON.stringify(questions);
+            // ✅ FIX: write manual JSON to the SAME input the controller reads ("questions")
+            document.getElementById('questionsInput').value = JSON.stringify(questions);
         }
     });
-
 
     @if(old('input_method') === 'manual')
     switchMethod('manual');
     @endif
 
-
     // ============================================================
-    // 8. Download Excel Templates (as before)
+    // 8. Download Excel Templates
     // ============================================================
     function downloadTemplate(type) {
         if (typeof XLSX === 'undefined') {
@@ -628,16 +653,14 @@
     }
 
     // ============================================================
-    // 10. Extend the exam_type change listener (add the call)
+    // 10. Single exam_type change listener (replaces the old duplicates)
     // ============================================================
-    // We'll override the existing listener by adding this:
     document.getElementById('exam_type').addEventListener('change', function() {
         updateRandomizationVisibility();
         renderUploadFormatHint(this.value);
         updateDownloadButtonVisibility(this.value);
     });
 
-    // Initialise on page load (after DOM ready)
     document.addEventListener('DOMContentLoaded', function() {
         updateDownloadButtonVisibility(document.getElementById('exam_type').value);
     });

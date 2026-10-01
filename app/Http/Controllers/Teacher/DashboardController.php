@@ -125,7 +125,8 @@ class DashboardController extends Controller
             'classes',
             'totalStudents',
             'readinessData',
-            'classScoreData'
+            'classScoreData',
+            'assignments'
         ));
     }
 

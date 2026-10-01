@@ -108,11 +108,25 @@
                         <td>{{ $teacher->first_name }} {{ $teacher->last_name }}</td>
                         <td>
                             @php
-                            $assigned = $teacher->teacherClassAssignments->map(function($assignment) {
-                            return $assignment->class->section_name . ' (' . $assignment->subject->name . ')';
-                            })->implode(', ');
+                            $grouped = $teacher->teacherClassAssignments
+                            ->groupBy(fn($a) => $a->class_id);
                             @endphp
-                            {{ $assigned ?: 'None' }}
+
+                            @forelse($grouped as $classId => $rows)
+                            @php
+                            $class = $rows->first()->class;
+                            @endphp
+                            <div style="margin-bottom:6px;">
+                                <strong>{{ $class->grade_level ?? '' }} - {{ $class->section_name ?? '' }}:</strong>
+                                @foreach($rows as $row)
+                                <span style="display:inline-block;background:#eef2ff;color:#1d4ed8;font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;margin:2px 4px 2px 0;">
+                                    {{ $row->subject->name ?? 'N/A' }}
+                                </span>
+                                @endforeach
+                            </div>
+                            @empty
+                            <span style="color:#999;">None</span>
+                            @endforelse
                         </td>
                         <td>
                             <button class="action-button" onclick="assignTeacher({{ $teacher->id }})">Assign</button>
@@ -232,33 +246,55 @@
 </div>
 
 <!-- Teacher Assignment Modal -->
+<!-- Teacher Assignment Modal -->
 <div class="modal-backdrop" id="assignTeacherModal">
-    <div class="modal">
+    <div class="modal" style="max-width:560px;">
         <div class="modal-header">
-            <h3 class="modal-title">Assign Teacher to Class</h3>
+            <h3 class="modal-title">
+                <i class="fas fa-chalkboard-teacher"></i> Assign Teacher
+            </h3>
             <button type="button" class="modal-close" onclick="closeAppModal('assignTeacherModal')">&times;</button>
         </div>
         <div class="modal-body">
-            <form id="assignTeacherForm" action="{{ route('admin.teacher-assign') }}" method="POST">
-                @csrf
-                <input type="hidden" name="teacher_profile_id" id="assignTeacherId">
-                <div class="input-group">
-                    <label>Select Class</label>
-                    <select name="class_id" id="assignClassId" required onchange="updateSubjects()">
-                        @foreach($classes->flatten() as $class)
-                        <option value="{{ $class->id }}" data-grade="{{ $class->grade_level }}">{{ $class->grade_level }} - {{ $class->section_name }}</option>
-                        @endforeach
-                    </select>
+            <input type="hidden" id="assignTeacherId">
+
+            {{-- Existing assignments --}}
+            <div class="input-group">
+                <label>Current Assignments</label>
+                <div id="existingAssignments" style="border:1px solid #e5e7eb;border-radius:8px;padding:10px;min-height:60px;background:#f9fafb;">
+                    <div style="color:#999;font-size:13px;">Loading…</div>
                 </div>
-                <div class="input-group">
-                    <label>Select Subject</label>
-                    <select name="subject_id" id="assignSubjectId" required></select>
-                </div>
-                <div style="display:flex;gap:12px;justify-content:flex-end;">
-                    <button type="button" class="secondary-button" onclick="closeAppModal('assignTeacherModal')">Cancel</button>
-                    <button type="submit" class="primary-button">Assign</button>
-                </div>
-            </form>
+            </div>
+
+            <hr style="margin:16px 0;">
+
+            {{-- Add new assignment --}}
+            <div class="input-group">
+                <label>Add New Assignment</label>
+            </div>
+
+            <div class="input-group">
+                <label>Class</label>
+                <select id="assignClassId" required onchange="updateSubjects()">
+                    @foreach($classes->flatten() as $class)
+                    <option value="{{ $class->id }}" data-grade="{{ $class->grade_level }}">
+                        {{ $class->grade_level }} - {{ $class->section_name }}
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Subject</label>
+                <select id="assignSubjectId" required></select>
+            </div>
+
+            <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">
+                <button type="button" class="secondary-button" onclick="closeAppModal('assignTeacherModal')">Close</button>
+                <button type="button" class="primary-button" onclick="addAssignment()">
+                    <i class="fas fa-plus"></i> Add Assignment
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -308,7 +344,9 @@
         }
     }
 
-    function openAddClassModal() { openAppModal('addClassModal'); }
+    function openAddClassModal() {
+        openAppModal('addClassModal');
+    }
 
     // ---------- Show selected file name ----------
     function showFileName(input, targetId) {
@@ -330,29 +368,35 @@
         const formData = new FormData(form);
 
         fetch('{{ route("admin.classes.store") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-            body: formData
-        })
-        .then(response => response.json().then(data => ({ status: response.status, data })))
-        .then(({ status, data }) => {
-            if (status >= 200 && status < 300 && data.success) {
-                closeAppModal('addClassModal');
-                showToast('Class created successfully!');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                let errorMsg = data.message || 'Unknown error.';
-                if (data.errors) errorMsg = Object.values(data.errors).flat().join(' • ');
-                showToast(errorMsg, true);
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            showToast('Network error. Please check your connection.', true);
-        });
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: formData
+            })
+            .then(response => response.json().then(data => ({
+                status: response.status,
+                data
+            })))
+            .then(({
+                status,
+                data
+            }) => {
+                if (status >= 200 && status < 300 && data.success) {
+                    closeAppModal('addClassModal');
+                    showToast('Class created successfully!');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    let errorMsg = data.message || 'Unknown error.';
+                    if (data.errors) errorMsg = Object.values(data.errors).flat().join(' • ');
+                    showToast(errorMsg, true);
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                showToast('Network error. Please check your connection.', true);
+            });
     }
 
     // ---------- Teacher upload modal ----------
@@ -381,31 +425,31 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
         fetch('{{ route("admin.master-data.upload-teacher") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
 
-            if (data.success) {
-                closeAppModal('uploadTeacherModal');
-                showToast(data.message || 'Teachers uploaded successfully!');
-                setTimeout(() => location.reload(), 2000);
-            } else {
-                showToast(data.message || 'Upload failed.', true);
-            }
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            showToast('Error uploading. Please try again.', true);
-        });
+                if (data.success) {
+                    closeAppModal('uploadTeacherModal');
+                    showToast(data.message || 'Teachers uploaded successfully!');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showToast(data.message || 'Upload failed.', true);
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                showToast('Error uploading. Please try again.', true);
+            });
     }
 
     // ---------- Student upload modal ----------
@@ -437,31 +481,31 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
 
         fetch('{{ route("admin.master-data.upload-student") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
 
-            if (data.success) {
-                closeAppModal('uploadStudentModal');
-                showToast(data.message || 'Students uploaded successfully!');
-                setTimeout(() => location.reload(), 2000);
-            } else {
-                showToast(data.message || 'Upload failed.', true);
-            }
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-            showToast('Error uploading. Please try again.', true);
-        });
+                if (data.success) {
+                    closeAppModal('uploadStudentModal');
+                    showToast(data.message || 'Students uploaded successfully!');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showToast(data.message || 'Upload failed.', true);
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+                showToast('Error uploading. Please try again.', true);
+            });
     }
 
     // ---------- View students ----------
@@ -472,30 +516,33 @@
     // ---------- Assign teacher ----------
     function assignTeacher(teacherId) {
         document.getElementById('assignTeacherId').value = teacherId;
+        document.getElementById('existingAssignments').innerHTML =
+            '<div style="color:#999;font-size:13px;">Loading…</div>';
         openAppModal('assignTeacherModal');
         updateSubjects();
+        loadExistingAssignments(teacherId);
     }
 
-    function updateSubjects() {
-        const selectedOption = document.querySelector('#assignClassId option:checked');
-        const grade = selectedOption ? selectedOption.dataset.grade : '';
-        const subjectSelect = document.getElementById('assignSubjectId');
-        subjectSelect.innerHTML = '';
-        const subjectsByGrade = @json($subjectsByGrade);
-        const subjects = subjectsByGrade[grade] || [];
-        subjects.forEach(subj => {
-            const opt = document.createElement('option');
-            opt.value = subj.id;
-            opt.textContent = subj.name;
-            subjectSelect.appendChild(opt);
-        });
-    }
+    // function updateSubjects() {
+    //     const selectedOption = document.querySelector('#assignClassId option:checked');
+    //     const grade = selectedOption ? selectedOption.dataset.grade : '';
+    //     const subjectSelect = document.getElementById('assignSubjectId');
+    //     subjectSelect.innerHTML = '';
+    //     const subjectsByGrade = @json($subjectsByGrade);
+    //     const subjects = subjectsByGrade[grade] || [];
+    //     subjects.forEach(subj => {
+    //         const opt = document.createElement('option');
+    //         opt.value = subj.id;
+    //         opt.textContent = subj.name;
+    //         subjectSelect.appendChild(opt);
+    //     });
+    // }
 
     // ---------- Global modal behaviors (backdrop click, Escape key) ----------
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
         // Close modal when the dark backdrop is clicked
         document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
-            backdrop.addEventListener('click', function (e) {
+            backdrop.addEventListener('click', function(e) {
                 if (e.target === backdrop) {
                     closeAppModal(backdrop.id);
                 }
@@ -503,7 +550,7 @@
         });
 
         // Close the topmost open modal with the Escape key
-        document.addEventListener('keydown', function (e) {
+        document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 const openModals = document.querySelectorAll('.modal-backdrop.active');
                 if (openModals.length) {
@@ -513,9 +560,129 @@
         });
 
         // Init the section tabs
-        const activeTab = document.querySelector('.section-tab.active')
-            || document.querySelector('.section-tab[data-grade="Grade 5"]');
+        const activeTab = document.querySelector('.section-tab.active') ||
+            document.querySelector('.section-tab[data-grade="Grade 5"]');
         if (activeTab) activeTab.click();
     });
+
+    function loadExistingAssignments(teacherId) {
+    const container = document.getElementById('existingAssignments');
+    container.innerHTML = '<div style="color:#999;font-size:13px;">Loading…</div>';
+
+    fetch(`/admin/teachers/${teacherId}/assignments`, {
+        headers: { 'Accept': 'application/json' },
+    })
+    .then(async res => {
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); }
+        catch { throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`); }
+        if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+        return data;
+    })
+    .then(data => {
+        const list = data.assignments || data.data || [];
+        if (!list.length) {
+            container.innerHTML = '<div style="color:#999;font-size:13px;">No assignments yet.</div>';
+            return;
+        }
+        container.innerHTML = list.map(a => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;">
+                <div style="font-size:13px;font-weight:600;color:#333;">
+                    ${a.class_name ?? ''} — ${a.subject ?? ''}
+                </div>
+                <button type="button" onclick="unassign(${a.id})"
+                    style="background:#fee2e2;color:#991b1b;border:none;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+        `).join('');
+    })
+    .catch(err => {
+        console.error('loadExistingAssignments failed:', err);
+        container.innerHTML = `<div style="color:#991b1b;font-size:13px;">Failed to load: ${err.message}</div>`;
+    });
+}
+
+    function addAssignment() {
+    const teacherId = document.getElementById('assignTeacherId').value;
+    const classId   = document.getElementById('assignClassId').value;
+    const subjectId = document.getElementById('assignSubjectId').value;
+
+    if (!classId || !subjectId) {
+        showToast('Please select a class and a subject.', true);
+        return;
+    }
+
+    fetch('{{ route("admin.teacher-assign") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            teacher_profile_id: teacherId,
+            class_id:           classId,
+            subject_id:         subjectId,
+        }),
+    })
+    .then(res => res.json())
+.then(data => {
+    if (data.success) {
+        closeAppModal('assignTeacherModal');
+        showToast(data.message || 'Assignment added.');
+        setTimeout(() => location.reload(), 1200);
+    } else {
+        showToast(data.message || 'Assignment failed.', true);
+    }
+})
+    .catch(() => showToast('Network error.', true));
+}
+
+function unassign(id) {
+    showConfirm(
+        'Remove this assignment?',
+        () => {
+            fetch(`/admin/teacher-assignments/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message || 'Assignment removed.');
+                    const teacherId = document.getElementById('assignTeacherId').value;
+                    loadExistingAssignments(teacherId);
+                    setTimeout(() => location.reload(), 2000);
+
+                } else {
+                    showToast(data.message || 'Remove failed.', true);
+                }
+            })
+            .catch(() => showToast('Network error.', true));
+        },
+        { title: 'Remove Assignment', okText: 'Yes, Remove', danger: true }
+    );
+}
+
+function updateSubjects() {
+    const selectedOption = document.querySelector('#assignClassId option:checked');
+    const grade = selectedOption ? selectedOption.dataset.grade : '';
+    const subjectSelect = document.getElementById('assignSubjectId');
+    subjectSelect.innerHTML = '';
+
+    const subjectsByGrade = @json($subjectsByGrade);
+    const subjects = subjectsByGrade[grade] || [];
+    subjects.forEach(subj => {
+        const opt = document.createElement('option');
+        opt.value = subj.id;
+        opt.textContent = subj.name;
+        subjectSelect.appendChild(opt);
+    });
+}
 </script>
 @endpush

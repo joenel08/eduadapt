@@ -37,7 +37,11 @@ class MasterDataController extends Controller
             ->groupBy('grade_level');
 
         // Eager load teacher assignments and their classes
-        $teachers = TeacherProfile::with(['user', 'teacherClassAssignments.class'])->get();
+        $teachers = TeacherProfile::with([
+            'user',
+            'teacherClassAssignments.class',
+            'teacherClassAssignments.subject',
+        ])->get();
 
         return view('admin.masterdata', compact('schoolYears', 'activeSchoolYear', 'classes', 'teachers', 'subjectsByGrade'));
     }
@@ -82,37 +86,37 @@ class MasterDataController extends Controller
     // }
 
     public function uploadStudent(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls',
-        'class_id' => 'required|exists:classes,id',
-    ]);
-
-    try {
-        $import = new StudentsImport($request->class_id);
-        Excel::import($import, $request->file('file'));
-
-        $successCount = $import->getSuccessCount();
-        $errors = $import->getErrors();
-
-        $message = "{$successCount} students uploaded successfully.";
-        if (!empty($errors)) {
-            $message .= " " . count($errors) . " rows had errors.";
-        }
-
-        return response()->json([
-            'success' => $successCount > 0,
-            'message' => $message,
-            'errors'  => array_slice($errors, 0, 10),
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls',
+            'class_id' => 'required|exists:classes,id',
         ]);
-    } catch (\Exception $e) {
-        Log::error('Student upload failed: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Upload failed: ' . $e->getMessage(),
-        ], 500);
+
+        try {
+            $import = new StudentsImport($request->class_id);
+            Excel::import($import, $request->file('file'));
+
+            $successCount = $import->getSuccessCount();
+            $errors = $import->getErrors();
+
+            $message = "{$successCount} students uploaded successfully.";
+            if (!empty($errors)) {
+                $message .= " " . count($errors) . " rows had errors.";
+            }
+
+            return response()->json([
+                'success' => $successCount > 0,
+                'message' => $message,
+                'errors'  => array_slice($errors, 0, 10),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Student upload failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Upload failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
-}
     public function uploadTeacher(Request $request)
     {
         $request->validate([
@@ -160,7 +164,7 @@ class MasterDataController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
 
         // Header row
-        $headers = ['employee_id', 'prefix_name','first_name', 'middle_name','last_name', 'suffix_name','contact_no','address'];
+        $headers = ['employee_id', 'prefix_name', 'first_name', 'middle_name', 'last_name', 'suffix_name', 'contact_no', 'address'];
         $sheet->fromArray($headers, null, 'A1');
 
         // Style header
@@ -175,7 +179,7 @@ class MasterDataController extends Controller
 
         // Sample row
         $sheet->fromArray([
-            ['EMP-0001', 'Dr.','Juan','Pluto', 'Dela Cruz', 'Jr.','09123456790','Purok 1, San Juan, Cabagan, Isabela'],
+            ['EMP-0001', 'Dr.', 'Juan', 'Pluto', 'Dela Cruz', 'Jr.', '09123456790', 'Purok 1, San Juan, Cabagan, Isabela'],
         ], null, 'A2');
 
         // Auto-size columns

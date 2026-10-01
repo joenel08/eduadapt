@@ -272,7 +272,7 @@ class ClassController extends Controller
             'preTimeLimit',
             'postTimeLimit',
             'quizTimeLimit',
-             'studentProgress'
+            'studentProgress'
         ));
     }
 
@@ -432,19 +432,19 @@ class ClassController extends Controller
             );
 
 
-// 🔔 Notify the teacher
-$contentModel = $contentType::find($request->content_id);
-$contentTitle = $contentModel->title
-    ?? $contentModel->file_name
-    ?? 'Material';
+            // 🔔 Notify the teacher
+            $contentModel = $contentType::find($request->content_id);
+            $contentTitle = $contentModel->title
+                ?? $contentModel->file_name
+                ?? 'Material';
 
-$action = $status === 'completed' ? 'material_viewed' : 'material_viewed';
-NotificationService::notifyStudentAction(
-    $student,
-    $request->class_id,
-    $action,
-    $contentTitle
-);
+            $action = $status === 'completed' ? 'material_viewed' : 'material_viewed';
+            NotificationService::notifyStudentAction(
+                $student,
+                $request->class_id,
+                $action,
+                $contentTitle
+            );
 
             return response()->json(['success' => true, 'progress' => $progress]);
         } catch (\Exception $e) {
@@ -511,32 +511,32 @@ NotificationService::notifyStudentAction(
             );
 
             // 🔔 Notify teacher
-$actionType = match (true) {
-    str_contains($contentType, 'PreAssessment')    => 'assessment_submitted',
-    str_contains($contentType, 'PostAssessment')   => 'assessment_submitted',
-    str_contains($contentType, 'InterventionQuiz') => 'quiz_submitted',
-    default                                          => 'assessment_submitted',
-};
+            $actionType = match (true) {
+                str_contains($contentType, 'PreAssessment')    => 'assessment_submitted',
+                str_contains($contentType, 'PostAssessment')   => 'assessment_submitted',
+                str_contains($contentType, 'InterventionQuiz') => 'quiz_submitted',
+                default                                          => 'assessment_submitted',
+            };
 
-// Get class_id from content_releases
-$release = \App\Models\ContentRelease::where('content_type', $this->resolveReleaseTypeKey($contentType))
-    ->where('content_id', $request->content_id)
-    ->first();
-$classId = $release->class_id ?? 0;
+            // Get class_id from content_releases
+            $release = \App\Models\ContentRelease::where('content_type', $this->resolveReleaseTypeKey($contentType))
+                ->where('content_id', $request->content_id)
+                ->first();
+            $classId = $release->class_id ?? 0;
 
-$label = match (true) {
-    str_contains($contentType, 'PreAssessment')    => 'Pre-Assessment',
-    str_contains($contentType, 'PostAssessment')   => 'Post-Assessment',
-    str_contains($contentType, 'InterventionQuiz') => 'Mini Quiz',
-    default                                          => 'Assessment',
-};
+            $label = match (true) {
+                str_contains($contentType, 'PreAssessment')    => 'Pre-Assessment',
+                str_contains($contentType, 'PostAssessment')   => 'Post-Assessment',
+                str_contains($contentType, 'InterventionQuiz') => 'Mini Quiz',
+                default                                          => 'Assessment',
+            };
 
-NotificationService::notifyStudentAction(
-    $student,
-    $classId,
-    $actionType,
-    $label
-);
+            NotificationService::notifyStudentAction(
+                $student,
+                $classId,
+                $actionType,
+                $label
+            );
             return response()->json([
                 'success' => true,
                 'score' => $score,
@@ -637,15 +637,15 @@ NotificationService::notifyStudentAction(
             }
         }
 
-         // 🔔 Notify teacher that the student finished all lesson materials
-    if ($releases->isNotEmpty()) {
-        NotificationService::notifyStudentAction(
-            $student,
-            $request->class_id,
-            'material_viewed',
-            'All lesson materials'
-        );
-    }
+        // 🔔 Notify teacher that the student finished all lesson materials
+        if ($releases->isNotEmpty()) {
+            NotificationService::notifyStudentAction(
+                $student,
+                $request->class_id,
+                'material_viewed',
+                'All lesson materials'
+            );
+        }
         return response()->json(['success' => true]);
     }
 
@@ -708,28 +708,28 @@ NotificationService::notifyStudentAction(
             }
         }
 
-          // 🔔 Notify teacher that the student finished all intervention materials/videos
-    NotificationService::notifyStudentAction(
-        $student,
-        $request->class_id,
-        'material_viewed',
-        'All intervention materials'
-    );
+        // 🔔 Notify teacher that the student finished all intervention materials/videos
+        NotificationService::notifyStudentAction(
+            $student,
+            $request->class_id,
+            'material_viewed',
+            'All intervention materials'
+        );
         // Also mark the intervention_materials_done flag? Not needed as the JS will handle it.
         return response()->json(['success' => true]);
     }
 
 
     private function resolveReleaseTypeKey(string $fullClass): string
-{
-    return match ($fullClass) {
-        ContentItem::class           => 'learningMaterial',
-        PreAssessment::class         => 'preAssessment',
-        PostAssessment::class        => 'postAssessment',
-        InterventionMaterial::class  => 'interventionMaterial',
-        InterventionVideo::class     => 'interventionVideo',
-        InterventionQuiz::class      => 'interventionQuiz',
-        default                       => '',
-    };
-}
+    {
+        return match ($fullClass) {
+            ContentItem::class           => 'learningMaterial',
+            PreAssessment::class         => 'preAssessment',
+            PostAssessment::class        => 'postAssessment',
+            InterventionMaterial::class  => 'interventionMaterial',
+            InterventionVideo::class     => 'interventionVideo',
+            InterventionQuiz::class      => 'interventionQuiz',
+            default                       => '',
+        };
+    }
 }

@@ -74,6 +74,191 @@
             .replace(/'/g, '&#039;');
     };
 
+
+    // ===== Styled Confirmation Modal =====
+    (function injectConfirmModalStyles() {
+        if (document.getElementById('eaConfirmStyles')) return;
+        const style = document.createElement('style');
+        style.id = 'eaConfirmStyles';
+        style.textContent = `
+        .ea-confirm-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: eaFadeIn .18s ease-out;
+        }
+        .ea-confirm-overlay.active { display: flex; }
+
+        .ea-confirm-dialog {
+            background: #fff;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            transform: translateY(8px) scale(.98);
+            animation: eaPopIn .22s cubic-bezier(.2,.9,.3,1.2) forwards;
+            font-family: inherit;
+        }
+
+        .ea-confirm-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px 22px 8px;
+        }
+        .ea-confirm-icon {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .ea-confirm-icon.danger  { background: #FEE2E2; color: #DC2626; }
+        .ea-confirm-icon.warning { background: #FEF3C7; color: #D97706; }
+        .ea-confirm-icon.info    { background: #DBEAFE; color: #2563EB; }
+
+        .ea-confirm-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .ea-confirm-body {
+            padding: 4px 22px 20px 76px;
+            font-size: 14px;
+            color: #4B5563;
+            line-height: 1.55;
+        }
+
+        .ea-confirm-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 14px 20px;
+            background: #F9FAFB;
+            border-top: 1px solid #E5E7EB;
+        }
+
+        .ea-confirm-btn {
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all .15s ease;
+            min-width: 88px;
+        }
+        .ea-confirm-btn:focus { outline: 2px solid #93C5FD; outline-offset: 2px; }
+
+        .ea-confirm-btn.cancel {
+            background: #fff;
+            border-color: #D1D5DB;
+            color: #374151;
+        }
+        .ea-confirm-btn.cancel:hover { background: #F3F4F6; }
+
+        .ea-confirm-btn.confirm.danger {
+            background: #DC2626;
+            color: #fff;
+        }
+        .ea-confirm-btn.confirm.danger:hover { background: #B91C1C; }
+
+        .ea-confirm-btn.confirm.warning {
+            background: #D97706;
+            color: #fff;
+        }
+        .ea-confirm-btn.confirm.warning:hover { background: #B45309; }
+
+        .ea-confirm-btn.confirm.info {
+            background: #2563EB;
+            color: #fff;
+        }
+        .ea-confirm-btn.confirm.info:hover { background: #1D4ED8; }
+
+        @keyframes eaFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes eaPopIn  { to { transform: translateY(0) scale(1); } }
+    `;
+        document.head.appendChild(style);
+    })();
+
+    window.showConfirmModal = function (options) {
+        const opts = Object.assign({
+            title: 'Are you sure?',
+            message: '',
+            confirmText: 'Confirm',
+            cancelText: 'Cancel',
+            variant: 'danger',   // 'danger' | 'warning' | 'info'
+            icon: null,          // override FA icon class
+        }, options || {});
+
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'ea-confirm-overlay';
+
+            const iconClass = opts.icon || (
+                opts.variant === 'danger' ? 'fa-trash-alt' :
+                    opts.variant === 'warning' ? 'fa-exclamation-triangle' :
+                        'fa-info-circle'
+            );
+
+            overlay.innerHTML = `
+            <div class="ea-confirm-dialog" role="dialog" aria-modal="true">
+                <div class="ea-confirm-header">
+                    <div class="ea-confirm-icon ${opts.variant}">
+                        <i class="fas ${iconClass}"></i>
+                    </div>
+                    <h3 class="ea-confirm-title">${window.escapeHtml(opts.title)}</h3>
+                </div>
+                ${opts.message ? `<div class="ea-confirm-body">${window.escapeHtml(opts.message)}</div>` : ''}
+                <div class="ea-confirm-footer">
+                    <button type="button" class="ea-confirm-btn cancel" data-action="cancel">
+                        ${window.escapeHtml(opts.cancelText)}
+                    </button>
+                    <button type="button" class="ea-confirm-btn confirm ${opts.variant}" data-action="confirm">
+                        ${window.escapeHtml(opts.confirmText)}
+                    </button>
+                </div>
+            </div>
+        `;
+
+            document.body.appendChild(overlay);
+            // Force reflow so the animation plays
+            void overlay.offsetWidth;
+            overlay.classList.add('active');
+
+            const close = (result) => {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.remove(), 180);
+                document.removeEventListener('keydown', onKey);
+                resolve(result);
+            };
+
+            const onKey = (e) => {
+                if (e.key === 'Escape') close(false);
+                if (e.key === 'Enter') close(true);
+            };
+
+            overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => close(false));
+            overlay.querySelector('[data-action="confirm"]').addEventListener('click', () => close(true));
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) close(false);
+            });
+            document.addEventListener('keydown', onKey);
+
+            // Focus the confirm button
+            setTimeout(() => overlay.querySelector('[data-action="confirm"]')?.focus(), 50);
+        });
+    };
+
+
     window.formatQuestionsDetailHtml = function (questions, examType) {
         if (!questions || !questions.length) return '<p class="text-muted">No questions.</p>';
         let html = `<div class="questions-container" style="margin-top:10px;">`;
@@ -242,6 +427,7 @@
                 });
             }
             // Videos
+            // Videos
             if (inter.videos && inter.videos.length) {
                 inter.videos.forEach((vid, idx) => {
                     const serverId = vid.id;
@@ -253,7 +439,7 @@
                         itemType: 'interventionVideo',
                         index: idx,
                         icon: 'fa-video',
-                        title: vid.video_url || vid.file_name || 'Intervention Video',
+                        title: vid.intervention_video_title || 'Intervention Video',   // ✅ changed
                         uploadedAt: vid.created_at || '',
                         badgeType: 'Intervention Video',
                         fileName: vid.file_name || '',
@@ -262,11 +448,10 @@
                         extraDetails: vid.video_url ? 'Video Link' : 'Uploaded Video',
                         serverId: serverId,
                         subType: 'video',
-                        releases: itemReleases   // ✅ ADDED
+                        releases: itemReleases
                     });
                 });
             }
-
             // Quizzes
             if (inter.quizzes && inter.quizzes.length) {
                 inter.quizzes.forEach((quiz, idx) => {
@@ -357,7 +542,16 @@
         `;
     };
     window.deleteRelease = async function (releaseId, ref) {
-        if (!confirm('Remove this class assignment?')) return;
+        const ok = await window.showConfirmModal({
+            title: 'Remove class assignment?',
+            message: 'Students in this class will no longer see this content. You can reassign it later.',
+            confirmText: 'Remove',
+            cancelText: 'Keep',
+            variant: 'warning',
+            icon: 'fa-user-minus',
+        });
+        if (!ok) return;
+
         const url = `/teacher/content-library/release/${releaseId}`;
         try {
             const response = await fetch(url, {
@@ -381,6 +575,90 @@
             }
         } catch (e) {
             alert('Error: ' + e.message);
+        }
+    };
+
+    // ===== Delete content item =====
+    window.deleteContentItem = async function (event, ref) {
+        if (event) event.stopPropagation();
+        window.closeAllContentMenus();
+
+        const item = window.getContentItemByRef(ref);
+        if (!item) {
+            window.showToast('Content not found.', true);
+            return;
+        }
+
+        const id = item.serverId || item.id;
+        if (!id) {
+            window.showToast('Content ID not found.', true);
+            return;
+        }
+
+        const type = item.itemType;
+
+        const labelMap = {
+            learningMaterial: 'learning material',
+            preAssessment: 'pre-assessment',
+            postAssessment: 'post-assessment',
+            interventionMaterial: 'intervention material',
+            interventionVideo: 'intervention video',
+            interventionQuiz: 'intervention quiz',
+        };
+        const friendly = labelMap[type] || 'content';
+        const titleText = item.title || item.file_name || friendly;
+
+        const confirmed = await window.showConfirmModal({
+            title: `Delete ${friendly}?`,
+            message: `"${titleText}" will be permanently removed. This action cannot be undone.`,
+            confirmText: 'Delete',
+            cancelText: 'Cancel',
+            variant: 'danger',
+            icon: 'fa-trash-alt',
+        });
+        if (!confirmed) return;
+
+        const base = '/teacher/content-library';
+        const urlMap = {
+            learningMaterial: `${base}/materials/${id}`,
+            preAssessment: `${base}/pre-assessment/${id}`,
+            postAssessment: `${base}/post-assessment/${id}`,
+            interventionMaterial: `${base}/intervention/material/${id}`,
+            interventionVideo: `${base}/intervention/video/${id}`,
+            interventionQuiz: `${base}/intervention/quiz/${id}`,
+        };
+        const url = urlMap[type];
+        if (!url) {
+            window.showToast('Unknown content type: ' + type, true);
+            return;
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.success) {
+                window.showToast(
+                    `${friendly.charAt(0).toUpperCase() + friendly.slice(1)} deleted successfully.`
+                );
+                window.loadContentFromServer();
+            } else {
+                window.showToast(
+                    data.message || `Delete failed (HTTP ${response.status}).`,
+                    true
+                );
+            }
+        } catch (e) {
+            console.error('deleteContentItem error:', e);
+            window.showToast('Network error. Please try again.', true);
         }
     };
     // ===== DROPDOWN SETUP =====
@@ -416,24 +694,24 @@
 
     // ===== Render Week Content =====
     window.renderWeekContent = function (grade, quarter, subject, week) {
-    const container = document.getElementById('contentItemsContainer');
-    if (!container) return;
+        const container = document.getElementById('contentItemsContainer');
+        if (!container) return;
 
-    const contentKey = `${grade}-${quarter}-${subject}-${week}`;
-    const content = state.weekContent[contentKey] || {};
-    const items = window.getWeekContentItems(content);
-    const hasContent = items.length > 0;
+        const contentKey = `${grade}-${quarter}-${subject}-${week}`;
+        const content = state.weekContent[contentKey] || {};
+        const items = window.getWeekContentItems(content);
+        const hasContent = items.length > 0;
 
-    // Action URLs
-    const materialsUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/materials/create`;
-    const preUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/pre-assessment/create`;
-    const postUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/post-assessment/create`;
-    const interventionMaterialsUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/intervention/materials/create`;
-    const interventionVideosUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/intervention/videos/create`;
-    const interventionQuizUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/intervention/quiz/create`;
+        // Action URLs
+        const materialsUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/materials/create`;
+        const preUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/pre-assessment/create`;
+        const postUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/post-assessment/create`;
+        const interventionMaterialsUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/intervention/materials/create`;
+        const interventionVideosUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/intervention/videos/create`;
+        const interventionQuizUrl = `/teacher/content-library/${grade}/${quarter}/${subject}/${week}/intervention/quiz/create`;
 
-    // ─── Build header & actions ────────────────────────────────
-    let html = `
+        // ─── Build header & actions ────────────────────────────────
+        let html = `
         <div class="week-content-page">
             <div class="week-header">
                 <i class="fas fa-folder-open"></i> ${subject} - ${week}
@@ -465,18 +743,18 @@
             </div>
     `;
 
-    // ─── Content area ──────────────────────────────────────────
-    if (state.isLoading) {
-        // Show loading spinner
-        html += `
+        // ─── Content area ──────────────────────────────────────────
+        if (state.isLoading) {
+            // Show loading spinner
+            html += `
             <div class="loading-spinner-wrapper">
                 <div class="spinner"></div>
                 <span class="loading-text">Loading content...</span>
             </div>
         `;
-    } else if (!hasContent) {
-        // Show empty state
-        html += `
+        } else if (!hasContent) {
+            // Show empty state
+            html += `
             <div class="empty-state">
                 <div class="empty-state-icon"><i class="fas fa-inbox"></i></div>
                 <div class="empty-state-title">No content uploaded for this week.</div>
@@ -489,19 +767,19 @@
                 </ul>
             </div>
         `;
-    } else {
-        // Show actual content cards
-        html += `<div class="content-and-package-wrap">`;
-        html += `<div class="content-items-grid">`;
-        items.forEach(item => {
-            html += window.renderContentItemCard(item);
-        });
-        html += `</div>`;
+        } else {
+            // Show actual content cards
+            html += `<div class="content-and-package-wrap">`;
+            html += `<div class="content-items-grid">`;
+            items.forEach(item => {
+                html += window.renderContentItemCard(item);
+            });
+            html += `</div>`;
 
-        // Package rail if all required components exist
-        if (typeof window.hasAllRequiredLearningComponents === 'function' &&
-            window.hasAllRequiredLearningComponents(content)) {
-            html += `
+            // Package rail if all required components exist
+            if (typeof window.hasAllRequiredLearningComponents === 'function' &&
+                window.hasAllRequiredLearningComponents(content)) {
+                html += `
                 <div class="learning-package-rail">
                     <button class="btn-configure-package" type="button" onclick="window.openLearningPackageModal()">
                         <i class="fas fa-calendar-check"></i>
@@ -509,15 +787,15 @@
                     </button>
                 </div>
             `;
+            }
+            html += `</div>`;
         }
-        html += `</div>`;
-    }
 
-    html += `</div>`; // .week-content-page
+        html += `</div>`; // .week-content-page
 
-    container.innerHTML = html;
-    setupInterventionDropdown();
-};
+        container.innerHTML = html;
+        setupInterventionDropdown();
+    };
     window.fetchReleasesForWeek = async function (grade, quarter, subject, week) {
         const url = `/teacher/content-library/releases/${encodeURIComponent(grade)}/${encodeURIComponent(quarter)}/${encodeURIComponent(subject)}/${encodeURIComponent(week)}`;
         const response = await fetch(url, {

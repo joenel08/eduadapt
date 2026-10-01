@@ -103,10 +103,10 @@
                     <div class="detail-label">Timer</div>
                     <div class="detail-value">{{ $item->settings['timer'] ?? '00:00:00' }}</div>
                 </div>
-                <div class="detail-row">
+                <!-- <div class="detail-row">
                     <div class="detail-label">Due Date</div>
                     <div class="detail-value">{{ $item->settings['due_date'] ?? 'Not set' }}</div>
-                </div>
+                </div> -->
                 @elseif($type === 'interventionMaterial')
                 <div class="detail-row">
                     <div class="detail-label">File Name</div>
@@ -194,8 +194,8 @@
                     <div class="detail-value">
                         @php $settings = is_string($item->settings) ? json_decode($item->settings, true) : $item->settings; @endphp
                         @if($settings)
-                        Timer: {{ $settings['timer'] ?? '00:00:00' }}<br>
-                        Due Date: {{ $settings['due_date'] ?? 'Not set' }}
+                        Timer: {{ $settings['timer'] ?? '00:00:00' }}
+                        <!-- Due Date: {{ $settings['due_date'] ?? 'Not set' }} -->
                         @else
                         No additional settings
                         @endif

@@ -112,6 +112,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/style.js') }}"></script>
 <script src="{{ asset('js/content-library/core.js') }}"></script>
 <script src="{{ asset('js/content-library/configuration.js') }}"></script>
 

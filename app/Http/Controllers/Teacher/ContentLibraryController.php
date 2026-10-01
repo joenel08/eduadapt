@@ -506,7 +506,7 @@ class ContentLibraryController extends Controller
             return response()->json(['success' => false, 'message' => 'Subject not found.'], 400);
         }
         $subjectId = $subjectModel->id;
-        \Log::info('Subject lookup: ' . $subject . ' -> ID: ' . ($subjectModel ? $subjectModel->id : 'null'));
+        // \Log::info('Subject lookup: ' . $subject . ' -> ID: ' . ($subjectModel ? $subjectModel->id : 'null'));
 
         // Delete old releases for this content
         ContentRelease::where('teacher_profile_id', $teacher->id)
@@ -554,36 +554,36 @@ class ContentLibraryController extends Controller
 
 
     private function resolveContentTitle(string $contentType, int $contentId): string
-{
-    $model = match ($contentType) {
-        'learningMaterial'      => ContentItem::find($contentId),
-        'preAssessment'         => PreAssessment::find($contentId),
-        'postAssessment'        => PostAssessment::find($contentId),
-        'interventionMaterial'  => InterventionMaterial::find($contentId),
-        'interventionVideo'     => InterventionVideo::find($contentId),
-        'interventionQuiz'      => InterventionQuiz::find($contentId),
-        default                 => null,
-    };
+    {
+        $model = match ($contentType) {
+            'learningMaterial'      => ContentItem::find($contentId),
+            'preAssessment'         => PreAssessment::find($contentId),
+            'postAssessment'        => PostAssessment::find($contentId),
+            'interventionMaterial'  => InterventionMaterial::find($contentId),
+            'interventionVideo'     => InterventionVideo::find($contentId),
+            'interventionQuiz'      => InterventionQuiz::find($contentId),
+            default                 => null,
+        };
 
-    if (!$model) return 'New content';
+        if (!$model) return 'New content';
 
-    return $model->title
-        ?? $model->file_name
-        ?? 'New ' . $this->resolveContentTypeSlug($contentType);
-}
+        return $model->title
+            ?? $model->file_name
+            ?? 'New ' . $this->resolveContentTypeSlug($contentType);
+    }
 
-private function resolveContentTypeSlug(string $contentType): string
-{
-    return match ($contentType) {
-        'learningMaterial'      => 'material',
-        'preAssessment'         => 'pre',
-        'postAssessment'        => 'post',
-        'interventionMaterial'  => 'intervention',
-        'interventionVideo'     => 'intervention',
-        'interventionQuiz'      => 'quiz',
-        default                 => 'material',
-    };
-}
+    private function resolveContentTypeSlug(string $contentType): string
+    {
+        return match ($contentType) {
+            'learningMaterial'      => 'material',
+            'preAssessment'         => 'pre',
+            'postAssessment'        => 'post',
+            'interventionMaterial'  => 'intervention',
+            'interventionVideo'     => 'intervention',
+            'interventionQuiz'      => 'quiz',
+            default                 => 'material',
+        };
+    }
 
     public function getWeekReleases($grade, $term, $subject, $week)
     {
@@ -696,6 +696,212 @@ private function resolveContentTypeSlug(string $contentType): string
             ->firstOrFail();
 
         $release->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function currentTeacher()
+    {
+        return TeacherProfile::where('user_id', auth()->id())->firstOrFail();
+    }
+
+    /**
+     * Delete related ContentRelease rows for a given content item.
+     */
+    private function purgeReleases(string $contentType, int $contentId, int $teacherId): void
+    {
+        ContentRelease::where('teacher_profile_id', $teacherId)
+            ->where('content_type', $contentType)
+            ->where('content_id', $contentId)
+            ->delete();
+    }
+
+    // ---------- Learning material ----------
+    public function deleteLearningMaterial($id)
+    {
+        $teacher = $this->currentTeacher();
+        $item = ContentItem::where('id', $id)
+            ->where('teacher_profile_id', $teacher->id)
+            ->first();
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Material not found.'], 404);
+        }
+
+        // Delete physical file
+        if ($item->file_path && Storage::disk('public')->exists($item->file_path)) {
+            Storage::disk('public')->delete($item->file_path);
+        }
+
+        $this->purgeReleases('learningMaterial', $item->id, $teacher->id);
+        $item->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ---------- Pre-assessment ----------
+    public function deletePreAssessment($id)
+    {
+        $teacher = $this->currentTeacher();
+        $item = PreAssessment::where('id', $id)
+            ->where('teacher_profile_id', $teacher->id)
+            ->first();
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Pre-assessment not found.'], 404);
+        }
+
+        if ($item->file_name) {
+            $path = sprintf(
+                'pre_assessments/%d/%s/%s/%s/%s/%s',
+                $teacher->id,
+                $item->grade_level,
+                $item->term,
+                optional($item->subject)->name ?? '',
+                $item->week,
+                $item->file_name
+            );
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $this->purgeReleases('preAssessment', $item->id, $teacher->id);
+        $item->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ---------- Post-assessment ----------
+    public function deletePostAssessment($id)
+    {
+        $teacher = $this->currentTeacher();
+        $item = PostAssessment::where('id', $id)
+            ->where('teacher_profile_id', $teacher->id)
+            ->first();
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Post-assessment not found.'], 404);
+        }
+
+        if ($item->file_name) {
+            $path = sprintf(
+                'post_assessments/%d/%s/%s/%s/%s/%s',
+                $teacher->id,
+                $item->grade_level,
+                $item->term,
+                optional($item->subject)->name ?? '',
+                $item->week,
+                $item->file_name
+            );
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $this->purgeReleases('postAssessment', $item->id, $teacher->id);
+        $item->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ---------- Intervention material ----------
+    public function deleteInterventionMaterial($id)
+    {
+        $teacher = $this->currentTeacher();
+        $item = InterventionMaterial::where('id', $id)
+            ->where('teacher_profile_id', $teacher->id)
+            ->first();
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Intervention material not found.'], 404);
+        }
+
+        // Adjust folder if your storage layout differs
+        if ($item->file_name) {
+            $path = sprintf(
+                'intervention_materials/%d/%s/%s/%s/%s/%s',
+                $teacher->id,
+                $item->grade_level,
+                $item->term,
+                optional($item->subject)->name ?? '',
+                $item->week,
+                $item->file_name
+            );
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $this->purgeReleases('interventionMaterial', $item->id, $teacher->id);
+        $item->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    // ---------- Intervention video ----------
+    public function deleteInterventionVideo($id)
+    {
+        $teacher = $this->currentTeacher();
+        $item = InterventionVideo::where('id', $id)
+            ->where('teacher_profile_id', $teacher->id)
+            ->first();
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Intervention video not found.'], 404);
+        }
+
+        // Only uploaded videos have a physical file; link-type videos just have a URL
+        if ($item->video_type === 'file' && $item->file_name) {
+            $path = sprintf(
+                'intervention_videos/%d/%s/%s/%s/%s/%s',
+                $teacher->id,
+                $item->grade_level,
+                $item->term,
+                optional($item->subject)->name ?? '',
+                $item->week,
+                $item->file_name
+            );
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $this->purgeReleases('interventionVideo', $item->id, $teacher->id);
+        $item->delete();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function deleteInterventionQuiz($id)
+    {
+        $teacher = $this->currentTeacher();
+        $item = InterventionQuiz::where('id', $id)
+            ->where('teacher_profile_id', $teacher->id)
+            ->first();
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Intervention quiz not found.'], 404);
+        }
+
+        if ($item->file_name) {
+            $path = sprintf(
+                'intervention_quizzes/%d/%s/%s/%s/%s/%s/%s',
+                $teacher->id,
+                $item->grade_level,
+                $item->term,
+                optional($item->subject)->name ?? '',
+                $item->week,
+                $item->level ?? '',
+                $item->file_name
+            );
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+
+        $this->purgeReleases('interventionQuiz', $item->id, $teacher->id);
+        $item->delete();
 
         return response()->json(['success' => true]);
     }

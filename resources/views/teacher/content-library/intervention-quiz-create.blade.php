@@ -16,18 +16,41 @@
     </div>
     <div class="week-subheader">Create a mini‑quiz for this intervention level</div>
 
+    {{-- ✅ FIX: validation + success feedback --}}
+    @if ($errors->any())
+        <div class="message-box" style="background:#ffe4e6;color:#991b1b;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            <ul style="margin:0;padding-left:18px;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    @if (session('success'))
+        <div class="message-box" style="background:#eef2ff;color:#1d4ed8;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
             <form id="quizForm" action="{{ route('teacher.content-library.intervention.quiz.store', [$grade, $term, $subject, $week]) }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                {{-- Level selector --}}
+
+                {{-- ✅ FIX: hidden input_method --}}
+                <input type="hidden" name="input_method" id="inputMethodInput" value="{{ old('input_method', 'upload') }}">
+
+                {{-- ✅ FIX: hidden settings --}}
+                <input type="hidden" name="settings" id="settingsInput" value="{{ old('settings') }}">
+
+                {{-- Level --}}
                 <div class="form-group">
                     <label for="level">Select Level:</label>
                     <select name="level" id="level" class="form-control" required>
                         <option value="">-- Select Level --</option>
-                        <option value="basic">🔹 Basic (Below Average)</option>
-                        <option value="standard" selected>🔹 Standard (Average)</option>
-                        <option value="advanced">🔹 Advanced (Above Average)</option>
+                        <option value="basic" {{ old('level') == 'basic' ? 'selected' : '' }}>🔹 Basic (Below Average)</option>
+                        <option value="standard" {{ old('level', 'standard') == 'standard' ? 'selected' : '' }}>🔹 Standard (Average)</option>
+                        <option value="advanced" {{ old('level') == 'advanced' ? 'selected' : '' }}>🔹 Advanced (Above Average)</option>
                     </select>
                 </div>
 
@@ -35,10 +58,10 @@
                 <div class="form-group">
                     <label for="quizExamType">Exam Type:</label>
                     <select name="exam_type" id="quizExamType" class="form-control">
-                        <option value="multipleChoice">Multiple Choice</option>
-                        <option value="trueFalse">True or False</option>
-                        <option value="matchingType">Matching Type</option>
-                        <option value="mixed">Mixed (Combined)</option>
+                        <option value="multipleChoice" {{ old('exam_type') == 'multipleChoice' ? 'selected' : '' }}>Multiple Choice</option>
+                        <option value="trueFalse" {{ old('exam_type') == 'trueFalse' ? 'selected' : '' }}>True or False</option>
+                        <option value="matchingType" {{ old('exam_type') == 'matchingType' ? 'selected' : '' }}>Matching Type</option>
+                        <option value="mixed" {{ old('exam_type') == 'mixed' ? 'selected' : '' }}>Mixed (Combined)</option>
                     </select>
                 </div>
 
@@ -59,7 +82,6 @@
                         <div id="quizUploadFormatHint" class="excel-format-hint"></div>
                         <p id="quizUploadInstruction" class="upload-instruction"></p>
 
-                        {{-- ✅ NEW: Download Template Buttons --}}
                         <div class="template-download-buttons" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; margin-top: 12px;">
                             <button type="button" class="btn btn-publish btn-sm template-dl-btn" data-type="multipleChoice" style="display:none;" onclick="downloadQuizTemplate('multipleChoice')">
                                 <i class="fas fa-file-download"></i> &nbsp;Download Multiple Choice Template
@@ -100,10 +122,11 @@
                         <i class="fas fa-magic"></i> Add Questions
                     </button>
                     <div class="questions-container" id="quizQuestionsContainer"></div>
-                    <input type="hidden" name="manual_questions" id="manualQuestionsInput" value="{{ old('manual_questions') }}">
+                    {{-- ✅ FIX: dead input, no name attr --}}
+                    <input type="hidden" id="manualQuestionsInput" value="{{ old('manual_questions') }}">
                 </div>
 
-                {{-- Randomization Options --}}
+                {{-- Randomization --}}
                 <div class="randomization-options" id="randomizationOptions">
                     <div class="randomization-options-title">Randomization (for student view)</div>
                     <label class="toggle-line">
@@ -139,12 +162,9 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-    // ============================================================
-    // 1. Upload / Manual toggle
-    // ============================================================
-    let currentMethod = 'upload';
-    let uploadedQuestions = [];
+    var currentMethod = '{{ old("input_method", "upload") }}';
 
     function switchQuizMethod(method) {
         currentMethod = method;
@@ -153,10 +173,12 @@
         document.querySelectorAll('.input-method-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.method === method);
         });
+        // ✅ FIX: sync hidden input_method
+        document.getElementById('inputMethodInput').value = method;
     }
 
     // ============================================================
-    // 2. Upload Format Hint (Excel)
+    // Upload Format Hint
     // ============================================================
     function renderUploadFormatHint(examType) {
         const hintEl = document.getElementById('quizUploadFormatHint');
@@ -168,7 +190,7 @@
                 ['The Earth revolves around the Sun.', 'True'],
                 ['HTML is a programming language.', 'False']
             ];
-            instruction = 'Upload an Excel file containing the Question and Correct Answer columns. The system will automatically generate the True and False choices.';
+            instruction = 'Upload an Excel file containing Question and Correct Answer columns.';
         } else if (examType === 'matchingType') {
             columns = ['Question', 'Answer'];
             sampleRows = [
@@ -176,7 +198,7 @@
                 ['Japan', 'Tokyo'],
                 ['Korea', 'Seoul']
             ];
-            instruction = 'Upload an Excel file containing Question and Answer columns. Each row is one matching pair.';
+            instruction = 'Upload an Excel file containing Question and Answer columns. Each row is a matching pair.';
         } else if (examType === 'mixed') {
             columns = ['Type', 'Question', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Correct Answer', 'Left', 'Right'];
             sampleRows = [
@@ -184,8 +206,8 @@
                 ['TF', 'The sun is hot.', '', '', '', '', 'True', '', ''],
                 ['MT', 'Match countries', '', '', '', '', '', 'Philippines', 'Manila']
             ];
-            instruction = 'For Mixed type, include a "Type" column with values: MC, TF, or MT. For MC, provide choices and correct answer. For TF, provide correct answer (True/False). For MT, provide Left and Right columns (Question/Answer for each pair).';
-        } else { // multipleChoice
+            instruction = 'For Mixed type, include a "Type" column with values: MC, TF, or MT.';
+        } else {
             columns = ['Question', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Correct Answer'];
             sampleRows = [
                 ['What is HTML?', 'Programming Language', 'Markup Language', 'Database', 'Browser', 'Markup Language']
@@ -202,27 +224,20 @@
     }
     renderUploadFormatHint(document.getElementById('quizExamType').value);
 
-    // ============================================================
-    // 2b. Update template download button visibility
-    // ============================================================
     function updateDownloadButtonVisibility(examType) {
         document.querySelectorAll('.template-dl-btn').forEach(btn => {
             btn.style.display = (btn.dataset.type === examType) ? 'inline-flex' : 'none';
         });
     }
 
-    // ============================================================
-    // 2c. Download Template (using XLSX)
-    // ============================================================
     function downloadQuizTemplate(type) {
         if (typeof XLSX === 'undefined') {
-            alert('XLSX library not loaded. Please refresh the page or include SheetJS library.');
+            alert('XLSX library not loaded.');
             return;
         }
 
         let rows = [];
         let filename = '';
-
         switch (type) {
             case 'multipleChoice':
                 rows = [
@@ -232,27 +247,22 @@
                 ];
                 filename = 'multiple_choice_template.xlsx';
                 break;
-
             case 'trueFalse':
                 rows = [
                     ['Question', 'Correct Answer'],
                     ['The Earth revolves around the Sun.', 'True'],
-                    ['HTML is a programming language.', 'False'],
-                    ['Water boils at 100°C.', 'True']
+                    ['HTML is a programming language.', 'False']
                 ];
                 filename = 'true_false_template.xlsx';
                 break;
-
             case 'matchingType':
                 rows = [
                     ['Question', 'Answer'],
                     ['Country: Philippines', 'Manila'],
-                    ['Country: Japan', 'Tokyo'],
-                    ['Country: France', 'Paris']
+                    ['Country: Japan', 'Tokyo']
                 ];
                 filename = 'matching_type_template.xlsx';
                 break;
-
             case 'mixed':
                 rows = [
                     ['Type', 'Question', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Correct Answer', 'Left', 'Right'],
@@ -262,7 +272,6 @@
                 ];
                 filename = 'mixed_template.xlsx';
                 break;
-
             default:
                 alert('Unknown template type.');
                 return;
@@ -276,45 +285,102 @@
     }
 
     // ============================================================
-    // 3. Excel file parsing (using XLSX)
+    // ✅ FIX: per-type Excel parser (replaces the naive col-0/1 reader)
     // ============================================================
     document.getElementById('quizFileInput').addEventListener('change', function(e) {
         const file = this.files[0];
         const nameDisplay = document.getElementById('quizFileName');
         const previewEl = document.getElementById('quizUploadPreview');
         const questionsInput = document.getElementById('questionsInput');
+
         if (!file) {
             nameDisplay.textContent = '';
             previewEl.style.display = 'none';
             previewEl.innerHTML = '';
-            uploadedQuestions = [];
             questionsInput.value = '';
             return;
         }
         nameDisplay.textContent = file.name;
         if (typeof XLSX === 'undefined') {
-            alert('Excel parser library not loaded. Please include XLSX library.');
+            alert('Excel parser library not loaded.');
             return;
         }
+
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {
-                    type: 'array'
-                });
-                const sheetName = workbook.SheetNames.find(name => name.toLowerCase().trim() === 'questions') || workbook.SheetNames[0];
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames.find(n => n.toLowerCase().trim() === 'questions') || workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
-                const rows = XLSX.utils.sheet_to_json(sheet, {
-                    header: 1,
-                    defval: ''
-                });
-                const qs = rows.slice(1).map(row => ({
-                    question: row[0] || 'Sample',
-                    correctAnswer: row[1] || ''
-                }));
-                uploadedQuestions = qs;
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+                const examType = document.getElementById('quizExamType').value;
+                let qs = [];
+
+                if (examType === 'multipleChoice') {
+                    const headers = rows[0].map(h => String(h).toLowerCase().trim());
+                    const qIdx = headers.indexOf('question');
+                    const c1 = headers.indexOf('choice 1');
+                    const c2 = headers.indexOf('choice 2');
+                    const c3 = headers.indexOf('choice 3');
+                    const c4 = headers.indexOf('choice 4');
+                    const ca = headers.indexOf('correct answer');
+                    if (qIdx === -1 || c1 === -1 || ca === -1) {
+                        alert('Invalid format for Multiple Choice. Please use the template.');
+                        return;
+                    }
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        const question = String(row[qIdx] || '').trim();
+                        if (!question) continue;
+                        const choices = [row[c1], row[c2], row[c3], row[c4]].map(v => String(v || '').trim());
+                        const correct = String(row[ca] || '').trim();
+                        if (choices.filter(Boolean).length < 2 || !correct) continue;
+                        qs.push({ type: 'multipleChoice', question, choices, correctAnswer: correct });
+                    }
+                } else if (examType === 'trueFalse') {
+                    const headers = rows[0].map(h => String(h).toLowerCase().trim());
+                    const qIdx = headers.indexOf('question');
+                    const ca = headers.indexOf('correct answer');
+                    if (qIdx === -1 || ca === -1) { alert('Invalid format for True/False.'); return; }
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        const question = String(row[qIdx] || '').trim();
+                        if (!question) continue;
+                        let correct = String(row[ca] || '').trim();
+                        if (!correct) continue;
+                        if (!['true','false'].includes(correct.toLowerCase())) {
+                            alert('Correct Answer must be True or False.');
+                            return;
+                        }
+                        qs.push({
+                            type: 'trueFalse',
+                            question,
+                            choices: ['True', 'False'],
+                            correctAnswer: correct.charAt(0).toUpperCase() + correct.slice(1).toLowerCase()
+                        });
+                    }
+                } else if (examType === 'matchingType') {
+                    const headers = rows[0].map(h => String(h).toLowerCase().trim());
+                    const qIdx = headers.indexOf('question');
+                    const aIdx = headers.indexOf('answer');
+                    if (qIdx === -1 || aIdx === -1) { alert('Invalid format for Matching Type.'); return; }
+                    const pairs = [];
+                    for (let i = 1; i < rows.length; i++) {
+                        const left = String(rows[i][qIdx] || '').trim();
+                        const right = String(rows[i][aIdx] || '').trim();
+                        if (left && right) pairs.push({ question: left, answer: right });
+                    }
+                    if (!pairs.length) { alert('No valid matching pairs found.'); return; }
+                    qs = [{ type: 'matchingType', question: 'Matching Exercise', pairs }];
+                } else if (examType === 'mixed') {
+                    qs = [];  // let the controller parse from file
+                }
+
                 questionsInput.value = JSON.stringify(qs);
+                // clear dead input
+                document.getElementById('manualQuestionsInput').value = '';
                 previewEl.innerHTML = `<strong>${qs.length} question(s) loaded successfully.</strong>`;
                 previewEl.style.display = 'block';
             } catch (err) {
@@ -327,7 +393,7 @@
     });
 
     // ============================================================
-    // 4. Manual Question Generation (with images)
+    // Manual question generator (unchanged behaviour, autocomplete + type added)
     // ============================================================
     function generateQuizQuestions() {
         const count = parseInt(document.getElementById('questionCount').value) || 3;
@@ -355,7 +421,7 @@
                 </div>
 
                 <div class="question-input-group">
-                    <input type="text" class="question-input" placeholder="Enter question text" name="question_text_${qNum}">
+                    <input type="text" class="question-input" autocomplete="off" placeholder="Enter question text" name="question_text_${qNum}">
                 </div>
 
                 <div class="form-group" style="margin-top:6px;">
@@ -369,7 +435,7 @@
                     ${[0,1,2,3].map(ci => `
                     <div class="choice-input-row">
                         <span>${String.fromCharCode(65 + ci)}.</span>
-                        <input type="text" class="choice-input" placeholder="Choice ${String.fromCharCode(65 + ci)}" name="choice_text_${qNum}_${ci}">
+                        <input type="text" class="choice-input" autocomplete="off" placeholder="Choice ${String.fromCharCode(65 + ci)}" name="choice_text_${qNum}_${ci}">
                         <input type="file" class="choice-image-input" accept="image/*" name="choice_image_${qNum}_${ci}" style="flex:0.6; padding:4px; font-size:12px;">
                         <div class="choice-image-preview"></div>
                         <label class="correct-choice-marker">
@@ -396,9 +462,9 @@
                 <div class="matching-inputs" style="display: ${defaultType === 'matchingType' ? 'block' : 'none'};">
                     <div class="matching-pairs">
                         <div class="matching-pair" data-pair="1">
-                            <input type="text" class="matching-left-input" placeholder="Left item" name="matching_left_${qNum}_1">
+                            <input type="text" class="matching-left-input" autocomplete="off" placeholder="Left item" name="matching_left_${qNum}_1">
                             <span>↔</span>
-                            <input type="text" class="matching-right-input" placeholder="Right item" name="matching_right_${qNum}_1">
+                            <input type="text" class="matching-right-input" autocomplete="off" placeholder="Right item" name="matching_right_${qNum}_1">
                             <button type="button" class="remove-pair" onclick="removeMatchingPair(this)">✕</button>
                         </div>
                     </div>
@@ -411,14 +477,13 @@
         }
         container.insertAdjacentHTML('beforeend', html);
 
-        // Attach preview handlers for file inputs
         container.querySelectorAll('.question-image-input').forEach(inp => {
-            inp.addEventListener('change', function(e) {
+            inp.addEventListener('change', function() {
                 const preview = this.closest('.question-item').querySelector('.question-image-preview');
                 preview.innerHTML = '';
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
+                    reader.onload = ev => {
                         preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%; max-height:100px; border-radius:4px; border:1px solid #ddd;">`;
                     };
                     reader.readAsDataURL(this.files[0]);
@@ -426,30 +491,24 @@
             });
         });
         container.querySelectorAll('.choice-image-input').forEach(inp => {
-            inp.addEventListener('change', function(e) {
+            inp.addEventListener('change', function() {
                 const parent = this.closest('.choice-input-row');
                 const preview = parent.querySelector('.choice-image-preview');
                 preview.innerHTML = '';
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
+                    reader.onload = ev => {
                         preview.innerHTML = `<img src="${ev.target.result}" style="max-height:40px; border-radius:4px; border:1px solid #ddd;">`;
                     };
                     reader.readAsDataURL(this.files[0]);
                 }
             });
         });
-        // Update radio indicators
         container.querySelectorAll('.correct-choice-radio').forEach(radio => {
-            radio.addEventListener('change', function() {
-                updateCorrectIndicator(this);
-            });
+            radio.addEventListener('change', function() { updateCorrectIndicator(this); });
         });
     }
 
-    // ============================================================
-    // 5. Helper functions (same as pre‑assessment)
-    // ============================================================
     function removeQuestion(btn) {
         const item = btn.closest('.question-item');
         if (item && item.parentElement.querySelectorAll('.question-item').length > 1) {
@@ -488,9 +547,9 @@
         newPair.className = 'matching-pair';
         newPair.dataset.pair = pairCount;
         newPair.innerHTML = `
-            <input type="text" class="matching-left-input" placeholder="Left item" name="matching_left_${qIndex}_${pairCount}">
+            <input type="text" class="matching-left-input" autocomplete="off" placeholder="Left item" name="matching_left_${qIndex}_${pairCount}">
             <span>↔</span>
-            <input type="text" class="matching-right-input" placeholder="Right item" name="matching_right_${qIndex}_${pairCount}">
+            <input type="text" class="matching-right-input" autocomplete="off" placeholder="Right item" name="matching_right_${qIndex}_${pairCount}">
             <button type="button" class="remove-pair" onclick="removeMatchingPair(this)">✕</button>
         `;
         pairsContainer.appendChild(newPair);
@@ -506,9 +565,27 @@
     }
 
     // ============================================================
-    // 6. On form submit: build JSON from manual inputs
+    // ✅ FIX: build settings JSON
+    // ============================================================
+    function buildSettingsJson() {
+        const pad = n => String(n).padStart(2, '0');
+        const h = parseInt(document.querySelector('input[name="hours"]').value || 0, 10);
+        const m = parseInt(document.querySelector('input[name="minutes"]').value || 0, 10);
+        const s = parseInt(document.querySelector('input[name="seconds"]').value || 0, 10);
+        return JSON.stringify({
+            timer: `${pad(h)}:${pad(m)}:${pad(s)}`,
+            shuffle_questions: !!document.querySelector('input[name="shuffle_questions"]').checked,
+            shuffle_choices:   !!document.querySelector('input[name="shuffle_choices"]').checked,
+        });
+    }
+
+    // ============================================================
+    // ✅ FIX: submit — always write settings, write manual JSON to #questionsInput
     // ============================================================
     document.getElementById('quizForm').addEventListener('submit', function(e) {
+        document.getElementById('settingsInput').value = buildSettingsJson();
+        document.getElementById('inputMethodInput').value = currentMethod;
+
         if (currentMethod === 'manual') {
             const container = document.getElementById('quizQuestionsContainer');
             const items = container.querySelectorAll('.question-item');
@@ -518,86 +595,58 @@
             items.forEach((item, idx) => {
                 const qType = item.dataset.questionType || 'multipleChoice';
                 const qText = item.querySelector('.question-input')?.value.trim() || '';
-                if (!qText) {
-                    alert(`Question ${idx+1} is missing text.`);
-                    hasError = true;
-                    return;
-                }
+                if (!qText) { alert(`Question ${idx+1} is missing text.`); hasError = true; return; }
 
-                const qNum = item.dataset.q;
-                let questionData = {
-                    type: qType,
-                    question: qText,
-                    image: null // will be filled by controller
-                };
+                const questionData = { type: qType, question: qText, image: null };
 
                 if (qType === 'multipleChoice') {
-                    const choiceInputs = item.querySelectorAll('.choice-input');
-                    const choices = [];
-                    choiceInputs.forEach(inp => {
-                        const val = inp.value.trim();
-                        if (val) choices.push(val);
-                    });
-                    if (choices.length < 2) {
+                    // ✅ preserve ALL slots so indices match the radio values
+                    const choices = Array.from(item.querySelectorAll('.choice-input'))
+                        .map(inp => inp.value.trim());
+
+                    if (choices.filter(Boolean).length < 2) {
                         alert(`Question ${idx+1} needs at least two choices.`);
-                        hasError = true;
-                        return;
+                        hasError = true; return;
                     }
                     const radio = item.querySelector('.correct-choice-radio:checked');
-                    let correctIndex = -1;
-                    if (radio) correctIndex = parseInt(radio.value, 10);
-                    if (correctIndex === -1 || correctIndex >= choices.length) {
-                        alert(`Question ${idx+1} needs a correct answer selected.`);
-                        hasError = true;
-                        return;
+                    if (!radio) { alert(`Question ${idx+1} needs a correct answer selected.`); hasError = true; return; }
+                    const correctIndex = parseInt(radio.value, 10);
+                    if (!choices[correctIndex]) {
+                        alert(`Question ${idx+1}: the choice marked as correct is empty.`);
+                        hasError = true; return;
                     }
                     questionData.choices = choices;
-                    questionData.choiceImages = []; // will be filled by controller
+                    questionData.choiceImages = [];
                     questionData.correctAnswer = choices[correctIndex];
+                    questionData.correctIndex = correctIndex;
+
                 } else if (qType === 'trueFalse') {
-                    const answerSelect = item.querySelector('.manual-answer-input');
-                    const correctAnswer = answerSelect ? answerSelect.value : '';
-                    if (!correctAnswer) {
-                        alert(`Question ${idx+1} needs a correct answer (True/False).`);
-                        hasError = true;
-                        return;
-                    }
+                    const correctAnswer = item.querySelector('.manual-answer-input')?.value || '';
+                    if (!correctAnswer) { alert(`Question ${idx+1} needs a correct answer (True/False).`); hasError = true; return; }
                     questionData.choices = ['True', 'False'];
                     questionData.correctAnswer = correctAnswer;
+
                 } else if (qType === 'matchingType') {
                     const pairs = [];
-                    const pairElements = item.querySelectorAll('.matching-pair');
-                    pairElements.forEach(pair => {
+                    item.querySelectorAll('.matching-pair').forEach(pair => {
                         const left = pair.querySelector('.matching-left-input')?.value.trim() || '';
                         const right = pair.querySelector('.matching-right-input')?.value.trim() || '';
-                        if (left && right) {
-                            pairs.push({
-                                question: left,
-                                answer: right
-                            });
-                        }
+                        if (left && right) pairs.push({ question: left, answer: right });
                     });
-                    if (pairs.length === 0) {
-                        alert(`Question ${idx+1} needs at least one matching pair.`);
-                        hasError = true;
-                        return;
-                    }
+                    if (!pairs.length) { alert(`Question ${idx+1} needs at least one matching pair.`); hasError = true; return; }
                     questionData.pairs = pairs;
                 }
 
                 questions.push(questionData);
             });
 
-            if (hasError) {
-                e.preventDefault();
-                return;
-            }
+            if (hasError) { e.preventDefault(); return; }
 
-            document.getElementById('manualQuestionsInput').value = JSON.stringify(questions);
+            // ✅ write to the input the controller reads
+            document.getElementById('questionsInput').value = JSON.stringify(questions);
         } else {
-            // Upload method – ensure questions are set
             const questionsInput = document.getElementById('questionsInput');
-            if (!questionsInput.value) {
+            if (!questionsInput.value || questionsInput.value === '[]') {
                 alert('Please upload a valid Excel file.');
                 e.preventDefault();
                 return;
@@ -605,17 +654,18 @@
         }
     });
 
-    // ============================================================
-    // 7. Initialize: update template visibility and exam type change
-    // ============================================================
     document.getElementById('quizExamType').addEventListener('change', function() {
         renderUploadFormatHint(this.value);
         updateDownloadButtonVisibility(this.value);
     });
 
-    // Initialise on page load
     document.addEventListener('DOMContentLoaded', function() {
         updateDownloadButtonVisibility(document.getElementById('quizExamType').value);
+        document.getElementById('inputMethodInput').value = currentMethod;
     });
+
+    @if(old('input_method') === 'manual')
+        switchQuizMethod('manual');
+    @endif
 </script>
 @endpush

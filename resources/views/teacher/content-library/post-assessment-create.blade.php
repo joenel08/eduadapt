@@ -16,13 +16,32 @@
     </div>
     <div class="week-subheader">Manage your Post-Assessment Exam</div>
 
+    {{-- ✅ FIX: validation + success feedback --}}
+    @if ($errors->any())
+        <div class="message-box" style="background:#ffe4e6;color:#991b1b;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            <ul style="margin:0;padding-left:18px;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    @if (session('success'))
+        <div class="message-box" style="background:#eef2ff;color:#1d4ed8;margin-bottom:16px;padding:12px 16px;border-radius:8px;">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body">
             <form id="postAssessmentForm" action="{{ route('teacher.content-library.post-assessment.store', [$grade, $term, $subject, $week]) }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
-                <!-- ✅ Hidden input_method – updated via JS -->
+                {{-- ✅ hidden input_method – updated via JS --}}
                 <input type="hidden" name="input_method" id="inputMethodHidden" value="{{ old('input_method', 'upload') }}">
+
+                {{-- ✅ FIX: hidden settings input – required by controller for timer/shuffle --}}
+                <input type="hidden" name="settings" id="settingsInput" value="{{ old('settings') }}">
 
                 <div class="form-group">
                     <label for="exam_type">Exam Type:</label>
@@ -77,7 +96,7 @@
                         @enderror
                     </div>
 
-                    <!-- ✅ Single questions field used for both upload and manual -->
+                    {{-- ✅ single questions field used for both upload and manual --}}
                     <input type="hidden" name="questions" id="questionsInput" value="{{ old('questions') }}">
                 </div>
 
@@ -129,7 +148,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // ============================================================
-    // ✅ FIX: Use 'var' to avoid redeclaration errors
+    // 1. Upload / Manual toggle
     // ============================================================
     var currentMethod = '{{ old("input_method", "upload") }}';
 
@@ -140,10 +159,7 @@
         document.querySelectorAll('.input-method-tab').forEach(tab => {
             tab.classList.toggle('active', tab.dataset.method === method);
         });
-
-        // Update hidden input_method
         document.getElementById('inputMethodHidden').value = method;
-
         updateRandomizationVisibility();
     }
 
@@ -159,13 +175,8 @@
         }
     }
 
-    document.getElementById('exam_type').addEventListener('change', function() {
-        updateRandomizationVisibility();
-        renderUploadFormatHint(this.value);
-    });
-
     // ============================================================
-    // 2. Upload Format Hint (Excel)
+    // 2. Upload Format Hint
     // ============================================================
     function renderUploadFormatHint(examType) {
         const hintEl = document.getElementById('uploadFormatHint');
@@ -193,8 +204,8 @@
                 ['TF', 'The sun is hot.', '', '', '', '', 'True', '', ''],
                 ['MT', 'Match countries', '', '', '', '', '', 'Philippines', 'Manila']
             ];
-            instruction = 'For Mixed type, include a "Type" column with values: MC, TF, or MT. For MC, provide choices and correct answer. For TF, provide correct answer (True/False). For MT, provide Left and Right columns (Question/Answer for each pair).';
-        } else { // multipleChoice
+            instruction = 'For Mixed type, include a "Type" column with values: MC, TF, or MT.';
+        } else {
             columns = ['Question', 'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Correct Answer'];
             sampleRows = [
                 ['What is HTML?', 'Programming Language', 'Markup Language', 'Database', 'Browser', 'Markup Language']
@@ -212,7 +223,7 @@
     renderUploadFormatHint(document.getElementById('exam_type').value);
 
     // ============================================================
-    // 3. Excel file parsing (using XLSX)
+    // 3. Excel parsing
     // ============================================================
     document.getElementById('fileInput').addEventListener('change', function(e) {
         const file = this.files[0];
@@ -228,7 +239,7 @@
         }
         nameDisplay.textContent = file.name;
         if (typeof XLSX === 'undefined') {
-            alert('Excel parser library not loaded. Please include XLSX library.');
+            alert('Excel parser library not loaded.');
             return;
         }
         const reader = new FileReader();
@@ -258,9 +269,9 @@
                         const row = rows[i];
                         const question = String(row[qIdx] || '').trim();
                         if (!question) continue;
-                        const choices = [row[c1], row[c2], row[c3], row[c4]].filter(v => String(v).trim() !== '');
+                        const choices = [row[c1], row[c2], row[c3], row[c4]].map(v => String(v || '').trim());
                         const correct = String(row[ca] || '').trim();
-                        if (choices.length < 2 || !correct) continue;
+                        if (choices.filter(Boolean).length < 2 || !correct) continue;
                         qs.push({ question, choices, correctAnswer: correct });
                     }
                 } else if (examType === 'trueFalse') {
@@ -304,8 +315,6 @@
                     }
                     qs = [{ question: 'Matching Exercise', pairs }];
                 } else if (examType === 'mixed') {
-                    // For mixed, we'll let the controller handle parsing from the file.
-                    // So we just set an empty array and rely on the file being uploaded.
                     qs = [];
                 }
 
@@ -322,7 +331,7 @@
     });
 
     // ============================================================
-    // 4. MANUAL QUESTION GENERATION (with image upload)
+    // 4. MANUAL QUESTION GENERATION
     // ============================================================
     function generateQuestions() {
         const count = parseInt(document.getElementById('questionCount').value) || 3;
@@ -350,7 +359,7 @@
                 </div>
 
                 <div class="question-input-group">
-                    <input type="text" class="question-input" placeholder="Enter question text" data-q="${qNum}" name="question_text_${qNum}">
+                    <input type="text" class="question-input" autocomplete="off" placeholder="Enter question text" data-q="${qNum}" name="question_text_${qNum}">
                 </div>
 
                 <div class="form-group" style="margin-top:6px;">
@@ -364,7 +373,7 @@
                     ${[0,1,2,3].map(ci => `
                     <div class="choice-input-row">
                         <span>${String.fromCharCode(65 + ci)}.</span>
-                        <input type="text" class="choice-input" placeholder="Choice ${String.fromCharCode(65 + ci)}" data-q="${qNum}" data-choice="${ci}" name="choice_text_${qNum}_${ci}">
+                        <input type="text" class="choice-input" autocomplete="off" placeholder="Choice ${String.fromCharCode(65 + ci)}" data-q="${qNum}" data-choice="${ci}" name="choice_text_${qNum}_${ci}">
                         <input type="file" class="choice-image-input" accept="image/*" name="choice_image_${qNum}_${ci}" style="flex:0.6; padding:4px; font-size:12px;">
                         <div class="choice-image-preview" style="margin-left:4px;"></div>
                         <label class="correct-choice-marker">
@@ -391,9 +400,9 @@
                 <div class="matching-inputs" data-q="${qNum}" style="display: ${defaultType === 'matchingType' ? 'block' : 'none'};">
                     <div class="matching-pairs">
                         <div class="matching-pair" data-pair="1">
-                            <input type="text" class="matching-left-input" placeholder="Left item" data-q="${qNum}" data-pair="1" name="matching_left_${qNum}_1">
+                            <input type="text" class="matching-left-input" autocomplete="off" placeholder="Left item" data-q="${qNum}" data-pair="1" name="matching_left_${qNum}_1">
                             <span>↔</span>
-                            <input type="text" class="matching-right-input" placeholder="Right item" data-q="${qNum}" data-pair="1" name="matching_right_${qNum}_1">
+                            <input type="text" class="matching-right-input" autocomplete="off" placeholder="Right item" data-q="${qNum}" data-pair="1" name="matching_right_${qNum}_1">
                             <button type="button" class="remove-pair" onclick="removeMatchingPair(this)">✕</button>
                         </div>
                     </div>
@@ -406,14 +415,13 @@
         }
         container.insertAdjacentHTML('beforeend', html);
 
-        // Attach preview handlers for file inputs
         container.querySelectorAll('.question-image-input').forEach(inp => {
-            inp.addEventListener('change', function(e) {
+            inp.addEventListener('change', function() {
                 const preview = this.closest('.question-item').querySelector('.question-image-preview');
                 preview.innerHTML = '';
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
+                    reader.onload = ev => {
                         preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%; max-height:100px; border-radius:4px; border:1px solid #ddd;">`;
                     };
                     reader.readAsDataURL(this.files[0]);
@@ -421,13 +429,13 @@
             });
         });
         container.querySelectorAll('.choice-image-input').forEach(inp => {
-            inp.addEventListener('change', function(e) {
+            inp.addEventListener('change', function() {
                 const parent = this.closest('.choice-input-row');
                 const preview = parent.querySelector('.choice-image-preview');
                 preview.innerHTML = '';
                 if (this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(ev) {
+                    reader.onload = ev => {
                         preview.innerHTML = `<img src="${ev.target.result}" style="max-height:40px; border-radius:4px; border:1px solid #ddd;">`;
                     };
                     reader.readAsDataURL(this.files[0]);
@@ -442,7 +450,7 @@
     }
 
     // ============================================================
-    // 5. Helper functions for manual questions
+    // 5. Helpers
     // ============================================================
     function removeQuestion(btn) {
         const item = btn.closest('.question-item');
@@ -482,9 +490,9 @@
         newPair.className = 'matching-pair';
         newPair.dataset.pair = pairCount;
         newPair.innerHTML = `
-            <input type="text" class="matching-left-input" placeholder="Left item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_left_${qIndex}_${pairCount}">
+            <input type="text" class="matching-left-input" autocomplete="off" placeholder="Left item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_left_${qIndex}_${pairCount}">
             <span>↔</span>
-            <input type="text" class="matching-right-input" placeholder="Right item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_right_${qIndex}_${pairCount}">
+            <input type="text" class="matching-right-input" autocomplete="off" placeholder="Right item" data-q="${qIndex}" data-pair="${pairCount}" name="matching_right_${qIndex}_${pairCount}">
             <button type="button" class="remove-pair" onclick="removeMatchingPair(this)">✕</button>
         `;
         pairsContainer.appendChild(newPair);
@@ -500,9 +508,28 @@
     }
 
     // ============================================================
-    // 6. On form submit: build JSON from manual inputs
+    // 6. Build settings JSON
+    // ============================================================
+    function buildSettingsJson() {
+        const pad = n => String(n).padStart(2, '0');
+        const h = parseInt(document.querySelector('input[name="hours"]').value || 0, 10);
+        const m = parseInt(document.querySelector('input[name="minutes"]').value || 0, 10);
+        const s = parseInt(document.querySelector('input[name="seconds"]').value || 0, 10);
+        return JSON.stringify({
+            timer: `${pad(h)}:${pad(m)}:${pad(s)}`,
+            shuffle_questions: !!document.querySelector('input[name="shuffle_questions"]').checked,
+            shuffle_choices:   !!document.querySelector('input[name="shuffle_choices"]').checked,
+        });
+    }
+
+    // ============================================================
+    // 7. Submit
     // ============================================================
     document.getElementById('postAssessmentForm').addEventListener('submit', function(e) {
+        // ✅ always refresh settings
+        document.getElementById('settingsInput').value = buildSettingsJson();
+        document.getElementById('inputMethodHidden').value = currentMethod;
+
         if (currentMethod === 'manual') {
             const container = document.getElementById('questionsContainer');
             const items = container.querySelectorAll('.question-item');
@@ -518,39 +545,39 @@
                     return;
                 }
 
-                const qNum = item.dataset.q;
-                let questionData = {
-                    type: qType,
-                    question: qText,
-                    image: null
-                };
+                const questionData = { type: qType, question: qText, image: null };
 
                 if (qType === 'multipleChoice') {
-                    const choiceInputs = item.querySelectorAll('.choice-input');
-                    const choices = [];
-                    choiceInputs.forEach(inp => {
-                        const val = inp.value.trim();
-                        if (val) choices.push(val);
-                    });
-                    if (choices.length < 2) {
+                    // ✅ preserve ALL slots (including empties) so indices match the radio values
+                    const choices = Array.from(item.querySelectorAll('.choice-input'))
+                        .map(inp => inp.value.trim());
+
+                    if (choices.filter(Boolean).length < 2) {
                         alert(`Question ${idx+1} needs at least two choices.`);
                         hasError = true;
                         return;
                     }
+
                     const radio = item.querySelector('.correct-choice-radio:checked');
-                    let correctIndex = -1;
-                    if (radio) correctIndex = parseInt(radio.value, 10);
-                    if (correctIndex === -1 || correctIndex >= choices.length) {
+                    if (!radio) {
                         alert(`Question ${idx+1} needs a correct answer selected.`);
                         hasError = true;
                         return;
                     }
+                    const correctIndex = parseInt(radio.value, 10);
+                    if (!choices[correctIndex]) {
+                        alert(`Question ${idx+1}: the choice marked as correct is empty.`);
+                        hasError = true;
+                        return;
+                    }
+
                     questionData.choices = choices;
                     questionData.choiceImages = [];
                     questionData.correctAnswer = choices[correctIndex];
+                    questionData.correctIndex = correctIndex;
+
                 } else if (qType === 'trueFalse') {
-                    const answerSelect = item.querySelector('.manual-answer-input');
-                    const correctAnswer = answerSelect ? answerSelect.value : '';
+                    const correctAnswer = item.querySelector('.manual-answer-input')?.value || '';
                     if (!correctAnswer) {
                         alert(`Question ${idx+1} needs a correct answer (True/False).`);
                         hasError = true;
@@ -558,17 +585,15 @@
                     }
                     questionData.choices = ['True', 'False'];
                     questionData.correctAnswer = correctAnswer;
+
                 } else if (qType === 'matchingType') {
                     const pairs = [];
-                    const pairElements = item.querySelectorAll('.matching-pair');
-                    pairElements.forEach(pair => {
+                    item.querySelectorAll('.matching-pair').forEach(pair => {
                         const left = pair.querySelector('.matching-left-input')?.value.trim() || '';
                         const right = pair.querySelector('.matching-right-input')?.value.trim() || '';
-                        if (left && right) {
-                            pairs.push({ question: left, answer: right });
-                        }
+                        if (left && right) pairs.push({ question: left, answer: right });
                     });
-                    if (pairs.length === 0) {
+                    if (!pairs.length) {
                         alert(`Question ${idx+1} needs at least one matching pair.`);
                         hasError = true;
                         return;
@@ -584,12 +609,10 @@
                 return;
             }
 
-            // Set the JSON into the single hidden field
             document.getElementById('questionsInput').value = JSON.stringify(questions);
         }
     });
 
-    // Restore old method
     @if(old('input_method') === 'manual')
         switchMethod('manual');
     @endif
@@ -599,7 +622,7 @@
     // ============================================================
     function downloadTemplate(type) {
         if (typeof XLSX === 'undefined') {
-            alert('XLSX library not loaded. Please refresh the page or include SheetJS library.');
+            alert('XLSX library not loaded.');
             return;
         }
 
@@ -658,9 +681,6 @@
         XLSX.writeFile(wb, filename);
     }
 
-    // ============================================================
-    // 9. Show/hide download buttons based on exam type
-    // ============================================================
     function updateDownloadButtonVisibility(examType) {
         document.querySelectorAll('.template-dl-btn').forEach(btn => {
             btn.style.display = (btn.dataset.type === examType) ? 'inline-flex' : 'none';
@@ -668,7 +688,7 @@
     }
 
     // ============================================================
-    // 10. Extend the exam_type change listener
+    // 9. Single exam_type change listener
     // ============================================================
     document.getElementById('exam_type').addEventListener('change', function() {
         updateRandomizationVisibility();
@@ -676,7 +696,6 @@
         updateDownloadButtonVisibility(this.value);
     });
 
-    // Initialise on page load
     document.addEventListener('DOMContentLoaded', function() {
         updateDownloadButtonVisibility(document.getElementById('exam_type').value);
         document.getElementById('inputMethodHidden').value = currentMethod;

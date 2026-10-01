@@ -33,6 +33,13 @@ Route::delete('/classes/{class}', [ClassController::class, 'destroy'])->name('cl
 Route::post('/teacher-assign', [TeacherAssignmentController::class, 'assign'])->name('teacher-assign');
 Route::delete('/teacher-assign/{assignment}', [TeacherAssignmentController::class, 'unassign'])->name('teacher-unassign');
 
+Route::get('/teachers/{teacher}/assignments',
+    [TeacherAssignmentController::class, 'index']
+)->name('teachers.assignments');
+
+    Route::delete('/teacher-assignments/{assignment}',
+        [TeacherAssignmentController::class, 'destroy']
+    )->name('teacher-assignments.destroy');
 
 
 
