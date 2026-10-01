@@ -75,6 +75,33 @@
     };
 
 
+    // ===== Ensure window.showToast always exists =====
+(function ensureToast() {
+    // 1) If style.js declared a global `showToast` and it's reachable, expose it on window.
+    try {
+        if (typeof showToast === 'function' && !window.showToast) {
+            window.showToast = showToast;
+        }
+    } catch (e) { /* not in scope, ignore */ }
+
+    // 2) If it's already on window, nothing to do.
+    if (typeof window.showToast === 'function') return;
+
+    // 3) Fallback: minimal toast that mirrors style.js visuals.
+    window.showToast = function (message, isError = false) {
+        const el = document.createElement('div');
+        el.className = 'message-box';
+        el.style.background = isError ? '#ffe4e6' : '#eef2ff';
+        el.style.color = isError ? '#991b1b' : '#1d4ed8';
+        el.textContent = message;
+
+        const host = document.querySelector('.content') || document.body;
+        host.prepend(el);
+
+        setTimeout(() => el.remove(), 4500);
+    };
+})();
+
     // ===== Styled Confirmation Modal =====
     (function injectConfirmModalStyles() {
         if (document.getElementById('eaConfirmStyles')) return;

@@ -39,10 +39,10 @@ Route::prefix('content-library')->group(function () {
     // -----------------------------------------------------------------
     // 1. NAVIGATION (server-driven pages)
     // -----------------------------------------------------------------
-    Route::get('/',                                       [ContentLibraryController::class, 'index'])   ->name('content-library');
+    Route::get('/',                                       [ContentLibraryController::class, 'index'])->name('content-library');
     Route::get('/{grade}/{term}',                         [ContentLibraryController::class, 'subjects'])->name('content-library.subjects');
-    Route::get('/{grade}/{term}/{subject}',               [ContentLibraryController::class, 'weeks'])   ->name('content-library.weeks');
-    Route::get('/{grade}/{term}/{subject}/{week}',        [ContentLibraryController::class, 'content']) ->name('content-library.content');
+    Route::get('/{grade}/{term}/{subject}',               [ContentLibraryController::class, 'weeks'])->name('content-library.weeks');
+    Route::get('/{grade}/{term}/{subject}/{week}',        [ContentLibraryController::class, 'content'])->name('content-library.content');
 
     // -----------------------------------------------------------------
     // 2. FIXED-SEGMENT ROUTES  (must come BEFORE the wildcard {grade} routes below)
@@ -55,13 +55,13 @@ Route::prefix('content-library')->group(function () {
         ->name('content-library.release.delete');
 
     // ---- AJAX: legacy generic endpoints ----
-    Route::post('/save-content',   [ContentLibraryController::class, 'saveContent'])  ->name('content-library.save');
+    Route::post('/save-content',   [ContentLibraryController::class, 'saveContent'])->name('content-library.save');
 
     // ---- Learning materials (AJAX + delete) ----
     Route::post('/upload-material', [LearningMaterialController::class, 'upload'])->name('content-library.upload-material');
     Route::get('/fetch/{grade}/{term}/{subject}/{week}', [LearningMaterialController::class, 'fetch'])->name('content-library.fetch');
     Route::post('/update/{id}',     [LearningMaterialController::class, 'update'])->name('content-library.update-material');
-    Route::delete('/materials/{id}',[ContentLibraryController::class, 'deleteLearningMaterial'])->name('materials.delete');
+    Route::delete('/materials/{id}', [ContentLibraryController::class, 'deleteLearningMaterial'])->name('materials.delete');
 
     // ---- Pre-assessment (AJAX) ----
     Route::post('/pre-assessment', [PreAssessmentController::class, 'store'])->name('content-library.pre-assessment.store-ajax');
@@ -99,8 +99,8 @@ Route::prefix('content-library')->group(function () {
 
     // ---- DELETEs for intervention subtypes (single set, unique names) ----
     Route::delete('/intervention/material/{id}', [ContentLibraryController::class, 'deleteInterventionMaterial'])->name('intervention.material.delete');
-    Route::delete('/intervention/video/{id}',    [ContentLibraryController::class, 'deleteInterventionVideo'])   ->name('intervention.video.delete');
-    Route::delete('/intervention/quiz/{id}',     [InterventionQuizController::class, 'destroy'])                ->name('intervention.quiz.delete');
+    Route::delete('/intervention/video/{id}',    [ContentLibraryController::class, 'deleteInterventionVideo'])->name('intervention.video.delete');
+    Route::delete('/intervention/quiz/{id}',     [InterventionQuizController::class, 'destroy'])->name('intervention.quiz.delete');
 
     // -----------------------------------------------------------------
     // 3. WEEK-SCOPED ROUTES  (wildcard prefix — MUST be last)
@@ -109,26 +109,27 @@ Route::prefix('content-library')->group(function () {
 
         // ---- Learning Materials ----
         Route::get('/materials/create', [ContentLibraryController::class, 'materialsCreate'])->name('content-library.materials.create');
-        Route::post('/materials',       [ContentLibraryController::class, 'materialsStore']) ->name('content-library.materials.store');
+        Route::post('/materials',       [ContentLibraryController::class, 'materialsStore'])->name('content-library.materials.store');
 
         // ---- Pre-Assessment ----
-        Route::get('/pre-assessment/create', [PreAssessmentController::class, 'create'])   ->name('content-library.pre-assessment.create');
+        Route::get('/pre-assessment/create', [PreAssessmentController::class, 'create'])->name('content-library.pre-assessment.create');
         Route::post('/pre-assessment',       [PreAssessmentController::class, 'storePage'])->name('content-library.pre-assessment.store');
 
         // ---- Post-Assessment ----
-        Route::get('/post-assessment/create', [PostAssessmentController::class, 'create'])   ->name('content-library.post-assessment.create');
+        Route::get('/post-assessment/create', [PostAssessmentController::class, 'create'])->name('content-library.post-assessment.create');
         Route::post('/post-assessment',       [PostAssessmentController::class, 'storePage'])->name('content-library.post-assessment.store');
 
         // ---- Intervention: create pages + store ----
         Route::get('/intervention/materials/create', [InterventionMaterialController::class, 'createPage'])->name('content-library.intervention.materials.create');
-        Route::post('/intervention/materials',       [InterventionMaterialController::class, 'storePage']) ->name('content-library.intervention.materials.store');
+        Route::post('/intervention/materials',       [InterventionMaterialController::class, 'storePage'])->name('content-library.intervention.materials.store');
 
         Route::get('/intervention/videos/create',    [InterventionVideoController::class, 'createPage'])->name('content-library.intervention.videos.create');
-        Route::post('/intervention/videos',          [InterventionVideoController::class, 'storePage']) ->name('content-library.intervention.videos.store');
+        Route::post('/intervention/videos',          [InterventionVideoController::class, 'storePage'])->name('content-library.intervention.videos.store');
 
         Route::get('/intervention/quiz/create',      [InterventionQuizController::class, 'createPage'])->name('content-library.intervention.quiz.create');
-        Route::post('/intervention/quiz',            [InterventionQuizController::class, 'storePage']) ->name('content-library.intervention.quiz.store-page');
-
+        Route::post('/intervention/quiz',            [InterventionQuizController::class, 'storePage'])->name('content-library.intervention.quiz.store-page');
+        Route::post('/intervention/quiz', [InterventionQuizController::class, 'storePage'])
+            ->name('content-library.intervention.quiz.store');
         // ---- View / Edit / Update (single route per verb+name) ----
         Route::get('/view/{type}/{id}',   [ContentLibraryController::class, 'view'])->name('content-library.view');
         Route::get('/edit/{type}/{id}',   [ContentLibraryController::class, 'edit'])->name('content-library.edit');
