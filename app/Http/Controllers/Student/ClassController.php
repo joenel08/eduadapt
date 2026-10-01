@@ -611,13 +611,18 @@ class ClassController extends Controller
     }
     public function completeLesson(Request $request)
     {
-        $request->validate(['class_id' => 'required|integer']);
-        $student = StudentProfile::where('user_id', Auth::id())->firstOrFail();
-        $class = Classes::findOrFail($request->class_id);
+        $request->validate([
+            'class_id'   => 'required|integer',
+            'subject_id' => 'nullable|integer',
+        ]);
 
-        // Get all learning materials for this class
+        $student = StudentProfile::where('user_id', Auth::id())->firstOrFail();
+        $class   = Classes::findOrFail($request->class_id);
+
+        // ⬇️ Filter by subject so we don't accidentally complete other subjects
         $releases = ContentRelease::where('class_id', $class->id)
-            ->where('content_type', 'learningMaterial')  // from your content_release types
+            ->where('content_type', 'learningMaterial')
+            ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
             ->get();
 
         foreach ($releases as $release) {
@@ -626,18 +631,17 @@ class ClassController extends Controller
                 StudentContentProgress::updateOrCreate(
                     [
                         'student_profile_id' => $student->id,
-                        'content_type' => ContentItem::class,  // 'App\Models\ContentItem'
-                        'content_id' => $model->id,
+                        'content_type'       => ContentItem::class,
+                        'content_id'         => $model->id,
                     ],
                     [
-                        'status' => 'completed',
+                        'status'       => 'completed',
                         'completed_at' => now(),
                     ]
                 );
             }
         }
 
-        // 🔔 Notify teacher that the student finished all lesson materials
         if ($releases->isNotEmpty()) {
             NotificationService::notifyStudentAction(
                 $student,
@@ -646,6 +650,7 @@ class ClassController extends Controller
                 'All lesson materials'
             );
         }
+
         return response()->json(['success' => true]);
     }
 
@@ -672,14 +677,17 @@ class ClassController extends Controller
 
     public function completeIntervention(Request $request)
     {
-        $request->validate(['class_id' => 'required|integer']);
+        $request->validate([
+            'class_id'   => 'required|integer',
+            'subject_id' => 'nullable|integer',
+        ]);
 
         $student = StudentProfile::where('user_id', Auth::id())->firstOrFail();
-        $class = Classes::findOrFail($request->class_id);
+        $class   = Classes::findOrFail($request->class_id);
 
-        // Get all intervention releases for this class (materials + videos)
         $releases = ContentRelease::where('class_id', $class->id)
             ->whereIn('content_type', ['interventionMaterial', 'interventionVideo'])
+            ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
             ->get();
 
         if ($releases->isEmpty()) {
@@ -687,7 +695,6 @@ class ClassController extends Controller
         }
 
         foreach ($releases as $release) {
-            // Find the actual model instance (InterventionMaterial or InterventionVideo)
             $contentClass = $release->content_type === 'interventionMaterial'
                 ? InterventionMaterial::class
                 : InterventionVideo::class;
@@ -696,27 +703,48 @@ class ClassController extends Controller
                 StudentContentProgress::updateOrCreate(
                     [
                         'student_profile_id' => $student->id,
-                        'content_type' => $contentClass,
-                        'content_id' => $content->id,
+                        'content_type'       => $contentClass,
+                        'content_id'         => $content->id,
                     ],
                     [
-                        'status' => 'completed',
+                        'status'       => 'completed',
                         'completed_at' => now(),
-                        'updated_at' => now(),
+                        'updated_at'   => now(),
                     ]
                 );
             }
         }
 
-        // 🔔 Notify teacher that the student finished all intervention materials/videos
         NotificationService::notifyStudentAction(
             $student,
             $request->class_id,
             'material_viewed',
             'All intervention materials'
         );
-        // Also mark the intervention_materials_done flag? Not needed as the JS will handle it.
+
         return response()->json(['success' => true]);
+    }
+
+    public function getProgress(Request $request)
+    {
+        $student  = StudentProfile::where('user_id', Auth::id())->firstOrFail();
+        $classId  = $request->input('class_id');
+        $subjectId = $request->input('subject_id');
+
+        if (!$classId) return response()->json(['percentage' => 0]);
+
+        $releases = ContentRelease::where('class_id', $classId)
+            ->when($subjectId, fn($q) => $q->where('subject_id', $subjectId))
+            ->get();
+
+        $lessonMaterials = $this->extractContent($releases, 'learningMaterial');
+        $lessonMaterials = $this->attachProgress($lessonMaterials, $student);
+
+        $total     = $lessonMaterials->count();
+        $completed = $lessonMaterials->filter(fn($m) => in_array($m->progress, ['viewed', 'completed']))->count();
+        $percentage = $total > 0 ? round(($completed / $total) * 100) : 0;
+
+        return response()->json(['percentage' => $percentage]);
     }
 
 

@@ -102,180 +102,6 @@
     .pc-chip.danger { background: #fee2e2; color: #991b1b; }
     .pc-chip.success { background: #def7ec; color: #0f6f5d; }
     .pc-chip.neutral { background: #eef2ff; color: #1d4ed8; }
-
-    /* ===== Video Modal ===== */
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.75);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 10001;
-        padding: 20px;
-    }
-    .modal-overlay.active { display: flex; }
-
-    .video-modal {
-        background: #fff;
-        border-radius: 14px;
-        width: 100%;
-        max-width: 900px;
-        max-height: 92vh;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-        animation: vmodalIn 0.25s ease;
-    }
-    @keyframes vmodalIn {
-        from { opacity: 0; transform: translateY(20px) scale(0.96); }
-        to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    .video-modal-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid #eef1f6;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-    }
-    .video-modal-header-content { flex: 1; min-width: 0; }
-    .video-modal-title {
-        font-size: 18px;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0 0 14px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .video-modal-title i { color: #0066CC; }
-
-    .video-modal-info {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 14px;
-    }
-    .video-modal-info-item { min-width: 0; }
-    .video-modal-info-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 700;
-        color: #8892a0;
-        margin-bottom: 3px;
-    }
-    .video-modal-info-value {
-        font-size: 13px;
-        font-weight: 600;
-        color: #1e293b;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .video-modal-close {
-        background: #f1f5f9;
-        border: none;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        color: #64748b;
-        font-size: 15px;
-        flex-shrink: 0;
-        transition: all 0.2s ease;
-    }
-    .video-modal-close:hover {
-        background: #FF6B6B;
-        color: #fff;
-        transform: rotate(90deg);
-    }
-
-    .video-modal-body {
-        padding: 20px 24px 24px;
-        overflow-y: auto;
-    }
-
-    .video-player-wrapper {
-        background: #000;
-        border-radius: 10px;
-        overflow: hidden;
-        min-height: 320px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .video-player {
-        width: 100%;
-        height: auto;
-        max-height: 60vh;
-        display: block;
-        background: #000;
-    }
-
-    .video-placeholder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 60px 20px;
-        color: #94a3b8;
-        text-align: center;
-    }
-    .video-placeholder-icon {
-        font-size: 56px;
-        color: #475569;
-        margin-bottom: 16px;
-    }
-    .video-placeholder-text {
-        font-size: 14px;
-        color: #94a3b8;
-    }
-
-    .btn-download {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background: linear-gradient(135deg, #0066CC 0%, #004D99 100%);
-        color: #fff;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-    .btn-download:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
-    }
-
-    /* ===== View button in the table ===== */
-    .btn-view {
-        background: linear-gradient(135deg, #0066CC 0%, #004D99 100%);
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        padding: 7px 14px;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.2s ease;
-    }
-    .btn-view:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(0, 102, 204, 0.3);
-    }
 </style>
 
 <div class="breadcrumb">
@@ -292,6 +118,7 @@
         <h1 style="font-size:28px;font-weight:700;"><i class="fas fa-user-graduate"></i> {{ $fullName }}</h1>
         <p style="color:#999;">LRN: {{ $student->lrn ?? 'N/A' }} • {{ $class->grade_level }} • {{ $class->section_name }}</p>
     </div>
+   
 </div>
 
 @php
@@ -371,14 +198,7 @@
                 </td>
                 <td>{{ $record->created_at->format('M d, Y g:i A') }}</td>
                 <td>
-                    {{-- ✅ FIXED: no json_encode, and use asset('storage/...') for the video URL --}}
-                    <button class="btn-view"
-                        data-student="{{ $fullName }}"
-                        data-assessment="{{ $record->exam_type }}"
-                        data-score="{{ $record->score }}"
-                        data-date="{{ $record->created_at->format('M d, Y') }}"
-                        data-video="{{ $record->video_path ? asset('storage/' . $record->video_path) : '' }}"
-                        onclick="openVideoModalFromData(this)">
+                    <button class="btn-view" onclick="openVideoModalFromData(this)">
                         <i class="fas fa-play-circle"></i> View
                     </button>
                 </td>
@@ -425,13 +245,13 @@
                     <div class="video-placeholder-icon"><i class="fas fa-video"></i></div>
                     <div class="video-placeholder-text">No recording available for this exam.</div>
                 </div>
-                {{-- ✅ FIXED: no hardcoded <source> / MIME; JS injects it dynamically --}}
-                <video id="videoPlayer" class="video-player" style="display: none;" controls preload="metadata">
+                <video id="videoPlayer" class="video-player" style="display: none;" controls>
+                    <source src="" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
             </div>
             <div class="video-download-wrapper" id="videoDownloadWrapper" style="display:none; text-align:center; margin-top:15px;">
-                <a id="videoDownloadLink" href="#" download="exam_recording.webm" class="btn-download">
+                <a id="videoDownloadLink" href="#" download="exam_recording.mp4" class="btn btn-download">
                     <i class="fas fa-download"></i> Download Video
                 </a>
             </div>
@@ -442,95 +262,56 @@
 
 @push('scripts')
 <script>
-    window.openVideoModalFromData = function (button) {
-        const studentName = button.dataset.student    || '';
-        const assessment  = button.dataset.assessment || '';
-        const score       = button.dataset.score      || '—';
-        const dateTaken   = button.dataset.date       || '';
-        const videoUrl    = button.dataset.video      || '';
+    window.openVideoModalFromData = function(button) {
+        var studentName = button.dataset.student;
+        var assessment = button.dataset.assessment;
+        var score = button.dataset.score;
+        var dateTaken = button.dataset.date;
+        var videoPath = button.dataset.video;
 
-        // Header info
-        document.getElementById('videoStudentName').textContent    = studentName;
+        document.getElementById('videoStudentName').textContent = studentName;
         document.getElementById('videoAssessmentType').textContent = assessment;
-        document.getElementById('videoScore').textContent          = score;
-        document.getElementById('videoDateTaken').textContent      = dateTaken;
-        document.getElementById('videoModalTitle').textContent     = assessment + ' - ' + studentName;
+        document.getElementById('videoScore').textContent = score;
+        document.getElementById('videoDateTaken').textContent = dateTaken;
+        document.getElementById('videoModalTitle').textContent = assessment + ' - ' + studentName;
 
-        const placeholder     = document.getElementById('videoPlaceholder');
-        const videoPlayer     = document.getElementById('videoPlayer');
-        const downloadWrapper = document.getElementById('videoDownloadWrapper');
-        const downloadLink    = document.getElementById('videoDownloadLink');
-        const placeholderText = placeholder.querySelector('.video-placeholder-text');
+        var placeholder = document.getElementById('videoPlaceholder');
+        var videoPlayer = document.getElementById('videoPlayer');
+        var downloadWrapper = document.getElementById('videoDownloadWrapper');
+        var downloadLink = document.getElementById('videoDownloadLink');
 
-        // Reset state
-        videoPlayer.querySelectorAll('source').forEach(s => s.remove());
-        videoPlayer.pause();
-        videoPlayer.removeAttribute('src');
-        videoPlayer.load();
-        videoPlayer.onerror = null;
-
-        if (videoUrl) {
+        if (videoPath && videoPath !== '') {
             placeholder.style.display = 'none';
             videoPlayer.style.display = 'block';
-
-            // Pick MIME from extension
-            const lower = videoUrl.toLowerCase();
-            let mime = 'video/mp4';
-            if (lower.endsWith('.webm'))                                mime = 'video/webm';
-            else if (lower.endsWith('.ogg') || lower.endsWith('.ogv'))  mime = 'video/ogg';
-            else if (lower.endsWith('.mov'))                            mime = 'video/quicktime';
-            else if (lower.endsWith('.m4v'))                            mime = 'video/x-m4v';
-
-            const source = document.createElement('source');
-            source.src  = videoUrl;
-            source.type = mime;
-            videoPlayer.appendChild(source);
-
-            videoPlayer.onerror = function () {
-                console.error('❌ Video failed to load:', videoUrl, videoPlayer.error);
-                placeholder.style.display = 'flex';
-                videoPlayer.style.display = 'none';
-                placeholderText.textContent =
-                    'Could not load recording (' + (videoPlayer.error?.message || 'unknown error') + ').';
-            };
-
+            videoPlayer.querySelector('source').src = videoPath;
             videoPlayer.load();
 
             downloadWrapper.style.display = 'block';
-            downloadLink.href = videoUrl;
-            downloadLink.download = videoUrl.split('/').pop() || 'exam_recording.webm';
+            downloadLink.href = videoPath;
+            var fileName = videoPath.split('/').pop() || 'exam_recording.mp4';
+            downloadLink.download = fileName;
         } else {
             placeholder.style.display = 'flex';
             videoPlayer.style.display = 'none';
             downloadWrapper.style.display = 'none';
-            placeholderText.textContent = 'No recording available for this exam.';
         }
 
         document.getElementById('videoModalOverlay').classList.add('active');
     };
 
-    window.closeVideoModal = function () {
+    window.closeVideoModal = function() {
         document.getElementById('videoModalOverlay').classList.remove('active');
-        const v = document.getElementById('videoPlayer');
-        if (v) {
-            v.pause();
-            v.currentTime = 0;
-        }
+        var videoPlayer = document.getElementById('videoPlayer');
+        if (videoPlayer) videoPlayer.pause();
     };
 
     document.addEventListener('DOMContentLoaded', function () {
-        const overlay = document.getElementById('videoModalOverlay');
+        var overlay = document.getElementById('videoModalOverlay');
         if (overlay) {
             overlay.addEventListener('click', function (e) {
                 if (e.target === this) closeVideoModal();
             });
         }
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                const ov = document.getElementById('videoModalOverlay');
-                if (ov && ov.classList.contains('active')) closeVideoModal();
-            }
-        });
     });
 </script>
 @endpush

@@ -542,11 +542,11 @@
         <div class="exam-start-subtitle" id="examStartSubtitle">Pre-Assessment</div>
         <div class="warning-label"><i class="fas fa-exclamation-triangle"></i> Important Notice</div>
         <div class="warning-list">
-            <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Do NOT open new tabs</strong> – 3 Strikes Rule: 1st &amp; 2nd = Warning, 3rd = Auto-Submit</span></div>
-            <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Do NOT minimize the window</strong> – 3 Strikes Rule: 1st &amp; 2nd = Warning, 3rd = Auto-Submit</span></div>
-            <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Do NOT switch windows</strong> – 3 Strikes Rule: 1st &amp; 2nd = Warning, 3rd = Auto-Submit</span></div>
-            <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Camera must be active</strong> – Required for proctoring.</span></div>
-        </div>
+    <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Do NOT open new tabs</strong> – 3 Strikes Rule: 1st &amp; 2nd = Warning, 3rd = Auto-Submit</span></div>
+    <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Do NOT minimize the window</strong> – 3 Strikes Rule: 1st &amp; 2nd = Warning, 3rd = Auto-Submit</span></div>
+    <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Do NOT switch windows</strong> – 3 Strikes Rule: 1st &amp; 2nd = Warning, 3rd = Auto-Submit</span></div>
+    <div class="warning-item"><i class="fas fa-times-circle"></i><span><strong>Camera must be active</strong> – Required for proctoring.</span></div>
+</div>
         <div class="requirements-list">
             <div class="warning-label" style="color: #0066CC; margin-bottom: 15px;"><i class="fas fa-check-circle"></i> Requirements</div>
             <div class="requirement-item"><i class="fas fa-video"></i><span>Stable internet connection and working camera</span></div>
@@ -555,7 +555,7 @@
         </div>
         <div class="checkbox-group">
             <input type="checkbox" id="understandWarning">
-            <label for="understandWarning">I understand the 3-strike rule. Violations will trigger warnings on the 1st and 2nd offense. The 3rd offense will automatically submit my exam.</label>
+           <label for="understandWarning">I understand the 3-strike rule. Violations will trigger warnings on the 1st and 2nd offense. The 3rd offense will automatically submit my exam.</label>
         </div>
         <div class="exam-start-buttons">
             <button class="exam-start-btn cancel" onclick="closeExamStartModal()"><i class="fas fa-times"></i> Cancel</button>
@@ -570,8 +570,8 @@
     <div class="warning-popup-icon" id="warningPopupIcon"><i class="fas fa-exclamation-triangle"></i></div>
     <div class="warning-popup-title" id="warningPopupTitle">WARNING</div>
     <div class="warning-popup-text" id="warningPopupText">You have switched tabs or minimized the window.</div>
-    <div class="warning-popup-remaining" id="warningPopupRemaining">Remaining Violations: 2</div>
-    <button class="warning-popup-btn" onclick="closeWarningPopup()">Continue Exam</button>
+<div class="warning-popup-remaining" id="warningPopupRemaining">Remaining Violations: 2</div>
+<button class="warning-popup-btn" onclick="closeWarningPopup()">Continue Exam</button>
 </div>
 
 <!-- SCORE RESULT MODAL -->
@@ -579,7 +579,7 @@
     <div class="score-result-modal">
         <div class="score-result-icon" id="scoreResultIcon"><i class="fas fa-check-circle"></i></div>
         <div class="score-result-title" id="scoreResultTitle">Assessment Complete!</div>
-        <div class="score-result-score" id="scoreResultScore">0/0</div>
+        <div class="score-result-score" id="scoreResultScore">85%</div>
         <div class="score-result-message" id="scoreResultMessage">Great job! You've completed your assessment.</div>
         <button class="score-result-btn" onclick="closeScoreResultModal()">Continue</button>
     </div>
@@ -788,54 +788,43 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-
 window.CLASSES_URL = "{{ route('student.classes') }}";
 </script>
 <script>
-    // ---------- Server-provided values ----------
-    const classId           = {{ $class->id }};
-    const subjectId         = {{ $selectedSubject->id ?? 'null' }};
-    const preAssessmentClass  = @json($preAssessment ? get_class($preAssessment) : null);
-    const preAssessmentId     = @json($preAssessment?->id);
+    const classId = {{ $class->id }};
+    const preAssessmentClass = @json($preAssessment ? get_class($preAssessment) : null);
+    const preAssessmentId = @json($preAssessment?->id);
     const postAssessmentClass = @json($postAssessment ? get_class($postAssessment) : null);
-    const postAssessmentId    = @json($postAssessment?->id);
+    const postAssessmentId = @json($postAssessment?->id);
     const quizAssessmentClass = @json($interventionQuiz ? get_class($interventionQuiz) : null);
-    const quizAssessmentId    = @json($interventionQuiz?->id);
-    // NOTE: these are in SECONDS (already converted on the PHP side)
-    const preTimeLimit  = {{ $preTimeLimit }};
+    const quizAssessmentId = @json($interventionQuiz?->id);
+    const preTimeLimit = {{ $preTimeLimit }};
     const postTimeLimit = {{ $postTimeLimit }};
     const quizTimeLimit = {{ $quizTimeLimit }};
-    const $isAllDone    = {{ $allDone ? 'true' : 'false' }};
 
-    // ---------- State ----------
-    let currentStep = 1;
-    let examActive = false;
-    let materialsActive = false;
-    let examStep = null;
-    let materialsWarningCount = 0;
-    let examWarningCount = 0;
-    const MAX_WARNINGS = 3;
+   let currentStep = 1;
+let examActive = false;
+let materialsActive = false;
+let examStep = null;
+let materialsWarningCount = 0;
+let examWarningCount = 0;   // <-- ADD THIS
+const MAX_WARNINGS = 3;
     let timerInterval = null;
     let mediaRecorder = null;
     let recordedChunks = [];
     let cameraStreams = {};
     let pendingExamStep = null;
 
-    // ---------- Global error logging (helpful for debugging transitions) ----------
-    window.addEventListener('error', (e) => {
-        console.error('🔴 Uncaught JS error:', e.message, e.error);
-    });
-
     // ---------- Navigation ----------
     function goToStep(step) {
-        console.log('🚀 goToStep', step);
         const btn = document.getElementById(`btn-step-${step}`);
 
         if (btn && btn.classList.contains('disabled')) {
-            alert('This step is not yet available. Please complete the previous step first.');
+            alert('This step is not yet available.');
             return;
         }
 
-        // Exam steps: show the start modal first (unless it's already completed → view-only)
         if ([2, 3, 5].includes(step)) {
+            // If completed, just view (no modal, no camera, no timer)
             if (btn && btn.classList.contains('completed')) {
-                proceedToStep(step, true);
+                proceedToStep(step, true); // true = view-only mode
                 return;
             }
             pendingExamStep = step;
@@ -847,8 +836,6 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     function proceedToStep(step, viewOnly = false) {
-        console.log('➡️ proceedToStep', step, 'viewOnly=', viewOnly);
-
         document.querySelectorAll('.step-content').forEach(el => el.style.display = 'none');
         const target = document.getElementById(`step-${step}`);
         if (target) target.style.display = 'block';
@@ -859,17 +846,19 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
 
         currentStep = step;
 
+        // If it's a completed assessment (view-only), just show it — no exam logic
         const isCompleted = btn && btn.classList.contains('completed');
 
-        if ([2, 3, 5].includes(step) && !isCompleted && !viewOnly) {
-            materialsActive = false;
-            examActive = true;
-            examStep = step === 2 ? 'pre' : (step === 3 ? 'post' : 'quiz');
-            examWarningCount = 0;
-            startFloatingCamera();
+       if ([2, 3, 5].includes(step) && !isCompleted) {
+    materialsActive = false;
+    examActive = true;
+    examStep = step === 2 ? 'pre' : (step === 3 ? 'post' : 'quiz');
+    examWarningCount = 0;   // <-- ADD THIS
+    startFloatingCamera();
             const timeLimit = step === 2 ? preTimeLimit : (step === 3 ? postTimeLimit : quizTimeLimit);
             if (timeLimit) startTimer(step, timeLimit);
         } else if (step === 1 || step === 4) {
+            // Materials — only warn if NOT all done yet
             materialsActive = !$isAllDone;
             examActive = false;
             examStep = null;
@@ -877,6 +866,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
             stopFloatingCamera();
             clearInterval(timerInterval);
         } else {
+            // View-only mode (completed assessment)
             materialsActive = false;
             examActive = false;
             examStep = null;
@@ -885,16 +875,14 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         }
     }
 
+    // Global flag passed from Blade
+    const $isAllDone = {{ $allDone ? 'true' : 'false' }};
+
     function showExamStartModal(step) {
         const names = { 2: 'Pre-Assessment', 3: 'Post-Assessment', 5: 'Mini Quiz' };
-        // Convert seconds → minutes for the label
-        const secs  = { 2: preTimeLimit || 600, 3: postTimeLimit || 600, 5: quizTimeLimit || 300 };
-        const mins  = Math.max(1, Math.floor(secs[step] / 60));
-
+        const times = { 2: preTimeLimit || 10, 3: postTimeLimit || 10, 5: quizTimeLimit || 5 };
+        document.getElementById('examTimeRequirement').innerHTML = `You have <strong>${times[step]} minutes</strong> to complete this assessment`;
         document.getElementById('examStartSubtitle').textContent = names[step];
-        document.getElementById('examTimeRequirement').innerHTML =
-            `You have <strong>${mins} minutes</strong> to complete this assessment`;
-
         document.getElementById('examStartModal').classList.add('active');
         document.getElementById('understandWarning').checked = false;
         document.getElementById('startExamBtn').disabled = true;
@@ -910,7 +898,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
             return;
         }
         closeExamStartModal();
-        setTimeout(() => proceedToStep(pendingExamStep), 200);
+        setTimeout(() => proceedToStep(pendingExamStep), 300);
     }
 
     document.addEventListener('change', function(e) {
@@ -919,35 +907,26 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         }
     });
 
-    // ---------- Timer (all values are SECONDS) ----------
-    function startTimer(step, totalSeconds) {
+    function startTimer(step, minutes) {
+        let seconds = minutes * 60;
         const timerId = step === 2 ? 'pre-timer' : (step === 3 ? 'post-timer' : 'quiz-timer');
         const display = document.getElementById(timerId);
         if (!display) return;
-
-        let seconds = totalSeconds;
         clearInterval(timerInterval);
-
-        const tick = () => {
+        timerInterval = setInterval(() => {
+            seconds--;
             const m = Math.floor(seconds / 60);
             const s = seconds % 60;
             display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-
             if (seconds <= 60) display.style.color = '#FF6B6B';
-
             if (seconds <= 0) {
                 clearInterval(timerInterval);
                 alert('⏰ Time is up! Submitting automatically.');
                 submitAssessment(examStep, true);
-                return;
             }
-            seconds--;
-        };
-        tick();
-        timerInterval = setInterval(tick, 1000);
+        }, 1000);
     }
 
-    // ---------- Camera ----------
     async function startFloatingCamera() {
         try {
             const video = document.getElementById('floatingCameraVideo');
@@ -993,36 +972,40 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         return new Blob(recordedChunks, { type: 'video/webm' });
     }
 
-    // ---------- Warning popups ----------
     function showWarningPopup(arg1, arg2) {
-        const icon      = document.getElementById('warningPopupIcon');
-        const title     = document.getElementById('warningPopupTitle');
-        const text      = document.getElementById('warningPopupText');
-        const remaining = document.getElementById('warningPopupRemaining');
+    const icon      = document.getElementById('warningPopupIcon');
+    const title     = document.getElementById('warningPopupTitle');
+    const text      = document.getElementById('warningPopupText');
+    const remaining = document.getElementById('warningPopupRemaining');
 
-        if (typeof arg1 === 'number') {
-            const offenseNumber = arg1;
-            if (offenseNumber === 1) {
-                icon.style.color      = '#FF9800';
-                title.textContent     = '⚠️ WARNING - First Offense';
-                text.textContent      = 'You have switched tabs or minimized the window. Please keep the exam window focused.';
-                remaining.textContent = 'Remaining Violations: 2 (Next violation = Final Warning)';
-            } else if (offenseNumber === 2) {
-                icon.style.color      = '#FF6B6B';
-                title.textContent     = '🚨 FINAL WARNING - Second Offense';
-                text.textContent      = 'This is your FINAL WARNING! One more violation will automatically submit your exam.';
-                remaining.textContent = 'Remaining Violations: 1 (Next violation = Auto-Submit)';
-            }
-        } else {
-            icon.style.color      = '#FF6B6B';
-            title.textContent     = arg1 || 'Warning!';
-            text.textContent      = arg2 || 'Please return to the page.';
-            remaining.textContent = `Violations: ${materialsWarningCount}/${MAX_WARNINGS}`;
+    if (typeof arg1 === 'number') {
+        // --- EXAM 3-STRIKE MODE ---
+        const offenseNumber = arg1;
+        if (offenseNumber === 1) {
+            icon.className      = 'warning-popup-icon';
+            icon.style.color    = '#FF9800';
+            title.textContent   = '⚠️ WARNING - First Offense';
+            text.textContent    = 'You have switched tabs or minimized the window. Please keep the exam window focused.';
+            remaining.textContent = 'Remaining Violations: 2 (Next violation = Final Warning)';
+        } else if (offenseNumber === 2) {
+            icon.className      = 'warning-popup-icon';
+            icon.style.color    = '#FF6B6B';
+            title.textContent   = '🚨 FINAL WARNING - Second Offense';
+            text.textContent    = 'This is your FINAL WARNING! You have switched tabs/minimized again. One more violation will automatically submit your exam.';
+            remaining.textContent = 'Remaining Violations: 1 (Next violation = Auto-Submit)';
         }
-
-        document.getElementById('warningPopupOverlay').style.display = 'block';
-        document.getElementById('warningPopup').style.display = 'block';
+    } else {
+        // --- MATERIALS MODE (existing behaviour) ---
+        icon.className      = 'warning-popup-icon';
+        icon.style.color    = '#FF6B6B';
+        title.textContent   = arg1 || 'Warning!';
+        text.textContent    = arg2 || 'Please return to the page.';
+        remaining.textContent = `Violations: ${materialsWarningCount}/${MAX_WARNINGS}`;
     }
+
+    document.getElementById('warningPopupOverlay').style.display = 'block';
+    document.getElementById('warningPopup').style.display = 'block';
+}
 
     function closeWarningPopup() {
         document.getElementById('warningPopupOverlay').style.display = 'none';
@@ -1037,34 +1020,38 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         setTimeout(() => alert.remove(), 5000);
     }
 
-    function showSuccessMessage(message) {
-        const alert = document.createElement('div');
-        alert.className = 'proctoring-alert';
-        alert.style.background = '#00AA66';
-        alert.style.color = 'white';
-        alert.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
-        document.body.appendChild(alert);
-        setTimeout(() => alert.remove(), 3000);
-    }
-
-    // ---------- Material marking ----------
     function markAllInterventionCompleted() {
         if (!confirm('Mark all intervention materials and videos as completed? This will unlock the Mini Quiz.')) return;
 
         fetch('{{ route("student.intervention.complete") }}', {
             method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ class_id: classId, subject_id: subjectId })
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ class_id: classId })
         })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                document.querySelectorAll('#step-4 .material-item').forEach(item => {
+                    const statusIcon = item.querySelector('.material-status i');
+                    if (statusIcon) { statusIcon.className = 'fas fa-check-circle'; statusIcon.style.color = '#00AA66'; }
+                    const btn = item.querySelector('.btn-mark-viewed');
+                    if (btn) { btn.textContent = 'Completed'; btn.disabled = true; btn.style.opacity = '0.6'; }
+                });
+
+                const container = document.querySelector('#step-4 .btn-continue')?.closest('div');
+                if (container) {
+                    container.innerHTML = `<p style="color: #00AA66; text-align: center; margin-top: 20px;"><i class="fas fa-check-circle"></i> All intervention materials completed! Proceeding to Mini Quiz...</p>`;
+                }
+
+                const btnStep5 = document.getElementById('btn-step-5');
+                if (btnStep5) {
+                    btnStep5.classList.remove('disabled');
+                    const lockBadge = btnStep5.querySelector('.lock-badge');
+                    if (lockBadge) lockBadge.remove();
+                }
+
                 showSuccessMessage('✅ All intervention materials completed!');
-                // Reload so the server re-computes access (unlocks Mini Quiz button)
-                setTimeout(() => window.location.reload(), 1000);
+                setTimeout(() => goToStep(5), 1500);
             } else {
                 alert('Error: ' + (data.message || 'Could not complete intervention items.'));
             }
@@ -1072,21 +1059,64 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         .catch(err => { console.error(err); alert('Network error.'); });
     }
 
-    function markMaterialViewed(btn, contentType, contentId, classIdArg, status = 'viewed') {
+    // ---------- Visibility/Warning ----------
+    // Only trigger warnings if the student is actively working (not reviewing completed content)
+   document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Skip all warnings if everything is done (review mode)
+        if ($isAllDone) return;
+
+        if (materialsActive) {
+            materialsWarningCount++;
+            if (materialsWarningCount >= MAX_WARNINGS) {
+                fetch('{{ route("student.lock.materials") }}', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ class_id: classId })
+                })
+                .then(res => res.json())
+                .then(data => { if (data.success) window.location.reload(); })
+                .catch(err => console.error(err));
+            } else {
+                showWarningPopup('Warning!', `You have switched tabs while viewing materials (${materialsWarningCount}/${MAX_WARNINGS}). After ${MAX_WARNINGS} attempts, materials will be locked.`);
+            }
+        } else if (examActive) {
+            // --- 3-STRIKE RULE ---
+            examWarningCount++;
+
+            if (examWarningCount === 1) {
+                showWarningPopup(1);
+            } else if (examWarningCount === 2) {
+                showWarningPopup(2);
+            } else if (examWarningCount >= MAX_WARNINGS) {
+                closeWarningPopup();
+                showProctoringAlert('❌ Maximum violations exceeded! Exam automatically submitted.');
+                submitAssessment(examStep, true);
+            }
+        }
+    }
+});
+
+    document.addEventListener('contextmenu', function(e) {
+        if (examActive && !$isAllDone) { e.preventDefault(); showProctoringAlert('⚠️ Right-click is disabled during exam'); return false; }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (examActive && !$isAllDone) {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key))) {
+                e.preventDefault();
+                showProctoringAlert('⚠️ Developer tools are disabled during exam');
+                return false;
+            }
+        }
+    });
+
+    function markMaterialViewed(btn, contentType, contentId, classId, status = 'viewed') {
         const item = btn.closest('.material-item');
         fetch('{{ route("student.content.view") }}', {
             method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                content_type: contentType,
-                content_id: contentId,
-                class_id: classIdArg,
-                subject_id: subjectId,
-                status: status
-            })
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content_type: contentType, content_id: contentId, class_id: classId, status: status })
         })
         .then(res => res.json())
         .then(data => {
@@ -1097,7 +1127,20 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
                 btn.disabled = true;
                 btn.style.opacity = '0.6';
 
-                if (contentType === 'App\\Models\\ContentItem') updateLessonProgress();
+                if (contentType === 'App\\Models\\ContentItem') updateLessonProgress(classId);
+
+                const isIntervention = contentType === 'App\\Models\\InterventionMaterial' || contentType === 'App\\Models\\InterventionVideo';
+                if (isIntervention) {
+                    fetch('{{ route("student.intervention.progress") }}?class_id=' + classId)
+                        .then(res => res.json())
+                        .then(pd => {
+                            if (pd.complete && pd.total > 0) {
+                                showSuccessMessage('✅ All intervention materials completed! Proceeding to Mini Quiz...');
+                                setTimeout(() => goToStep(5), 1500);
+                            }
+                        })
+                        .catch(err => console.error(err));
+                }
             } else {
                 alert(data.message || 'Error marking material.');
             }
@@ -1106,7 +1149,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     function updateLessonProgress() {
-        fetch('{{ route("student.content.progress") }}?class_id=' + classId + '&subject_id=' + subjectId)
+        fetch('{{ route("student.content.progress") }}?class_id=' + classId)
             .then(res => res.json())
             .then(data => {
                 const el = document.getElementById('lessonProgress');
@@ -1117,53 +1160,16 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
             .catch(err => console.error(err));
     }
 
-    // ---------- Step 1 complete ----------
-    function completeStep(step) {
-        if (step !== 1) return;
-
-        const confirmBtn = event && event.target;
-        if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.6'; }
-
-        fetch('{{ route("student.lesson.complete") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ class_id: classId, subject_id: subjectId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                showSuccessMessage('✅ Lesson Completed! Proceeding to Pre-Assessment...');
-                // ✅ The reliable fix: reload so server re-computes $access and
-                // unlocks the Pre-Assessment button.
-                setTimeout(() => window.location.reload(), 1200);
-            } else {
-                alert('Error completing lesson.');
-                if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Network error while completing lesson.');
-            if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
-        });
-    }
-
-    // ---------- Assessment submit ----------
     function submitAssessment(step, autoSubmit = false) {
-        const containerId = step === 'pre' ? 'preAssessmentContainer'
-                        : step === 'post' ? 'postAssessmentContainer'
-                        : 'interventionQuizContainer';
+        const containerId = step === 'pre' ? 'preAssessmentContainer' : (step === 'post' ? 'postAssessmentContainer' : 'interventionQuizContainer');
         const container = document.getElementById(containerId);
         if (!container) return;
 
         const answers = gatherAnswers(container);
         const contentTypeMap = { pre: preAssessmentClass, post: postAssessmentClass, quiz: quizAssessmentClass };
-        const contentIdMap   = { pre: preAssessmentId,    post: postAssessmentId,    quiz: quizAssessmentId };
+        const contentIdMap = { pre: preAssessmentId, post: postAssessmentId, quiz: quizAssessmentId };
         const contentType = contentTypeMap[step];
-        const contentId   = contentIdMap[step];
+        const contentId = contentIdMap[step];
 
         if (!contentType || !contentId) { alert('No assessment found.'); return; }
 
@@ -1184,15 +1190,52 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         .then(res => res.json())
         .then(data => {
             if (data.success) {
+                const btnMap = { pre: 2, post: 3, quiz: 5 };
+                const btn = document.getElementById(`btn-step-${btnMap[step]}`);
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.classList.add('completed');
+                    btn.innerHTML = `<i class="fas fa-check-circle"></i> Completed`;
+                    const badge = btn.querySelector('.lock-badge');
+                    if (badge) badge.remove();
+                }
+
+                let nextStepNumber = null;
+                if (step === 'pre') nextStepNumber = 3;
+                else if (step === 'post') nextStepNumber = 4;
+                else if (step === 'quiz') nextStepNumber = 6;
+
+                if (nextStepNumber && nextStepNumber <= 5) {
+                    const nextBtn = document.getElementById(`btn-step-${nextStepNumber}`);
+                    if (nextBtn) {
+                        nextBtn.classList.remove('disabled', 'locked');
+                        const lockBadge = nextBtn.querySelector('.lock-badge');
+                        if (lockBadge) lockBadge.remove();
+                        nextBtn.style.pointerEvents = 'auto';
+                        nextBtn.style.opacity = '1';
+                        if (!nextBtn.querySelector('.fa-check-circle')) {
+                            const icon = document.createElement('i');
+                            icon.className = 'fas fa-check-circle';
+                            icon.style.color = '#00AA66';
+                            icon.style.marginLeft = '5px';
+                            nextBtn.appendChild(icon);
+                        }
+                    }
+                }
+                if (step === 'quiz') {
+                    const btn4 = document.getElementById('btn-step-4');
+                    if (btn4) { btn4.classList.add('completed'); btn4.classList.remove('disabled'); }
+                }
+
+                showScoreResultModal(data.score, data.total, step);
                 stopFloatingCamera();
                 clearInterval(timerInterval);
                 examActive = false;
-                showScoreResultModal(data.score, data.total, step);
             } else {
-                alert('Error submitting assessment: ' + (data.message || 'Unknown error'));
+                alert('Error submitting assessment.');
             }
         })
-        .catch(err => { console.error(err); alert('Network error while submitting.'); });
+        .catch(err => console.error(err));
     }
 
     function gatherAnswers(container) {
@@ -1218,78 +1261,78 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         const names = { pre: 'Pre-Assessment', post: 'Post-Assessment', quiz: 'Mini Quiz' };
         document.getElementById('scoreResultTitle').textContent = names[step] + ' Complete!';
         document.getElementById('scoreResultScore').textContent = `${score}/${total}`;
-        const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-        document.getElementById('scoreResultMessage').textContent = `You scored ${pct}%. Great job!`;
+        document.getElementById('scoreResultMessage').textContent = `You scored ${Math.round((score / total) * 100)}%. Great job!`;
         overlay.classList.add('active');
     }
 
     function closeScoreResultModal() {
         document.getElementById('scoreResultOverlay').classList.remove('active');
-        // ✅ The reliable fix: reload so server recomputes $access and unlocks the next step.
-        window.location.reload();
+        const stepMap = { 2: 3, 3: 4, 5: 6 };
+        let next = stepMap[currentStep];
+        while (next && next <= 5) {
+            const btn = document.getElementById(`btn-step-${next}`);
+            if (btn && btn.classList.contains('completed')) next = stepMap[next] || 6;
+            else break;
+        }
+        if (next && next <= 5) {
+            if ([2, 3, 5].includes(next)) goToStep(next);
+            else proceedToStep(next);
+        } else if (next === 6) {
+            window.location.reload();
+        }
     }
 
-    // ---------- Visibility / proctoring ----------
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            if ($isAllDone) return;
+    function completeStep(step) {
+        if (step !== 1) return;
+        fetch('{{ route("student.lesson.complete") }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ class_id: classId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.querySelectorAll('#lessonMaterialsList .material-item').forEach(item => {
+                    const statusIcon = item.querySelector('.material-status i');
+                    if (statusIcon) { statusIcon.className = 'fas fa-check-circle'; statusIcon.style.color = '#00AA66'; }
+                    const btn = item.querySelector('.btn-mark-viewed');
+                    if (btn) { btn.textContent = 'Completed'; btn.disabled = true; }
+                });
 
-            if (materialsActive) {
-                materialsWarningCount++;
-                if (materialsWarningCount >= MAX_WARNINGS) {
-                    fetch('{{ route("student.lock.materials") }}', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ class_id: classId, type: 'lesson' })
-                    })
-                    .then(res => res.json())
-                    .then(() => window.location.reload())
-                    .catch(err => console.error(err));
-                } else {
-                    showWarningPopup('Warning!',
-                        `You have switched tabs while viewing materials (${materialsWarningCount}/${MAX_WARNINGS}). After ${MAX_WARNINGS} attempts, materials will be locked.`);
+                updateLessonProgress();
+
+                const btnStep1 = document.getElementById('btn-step-1');
+                btnStep1.classList.remove('active');
+                btnStep1.classList.add('completed');
+                btnStep1.innerHTML = `<i class="fas fa-check-circle"></i> Lesson Materials`;
+
+                const btnStep2 = document.getElementById('btn-step-2');
+                if (btnStep2) {
+                    btnStep2.classList.remove('disabled');
+                    const lockBadge = btnStep2.querySelector('.lock-badge');
+                    if (lockBadge) lockBadge.remove();
                 }
-            } else if (examActive) {
-                examWarningCount++;
-                if (examWarningCount === 1) {
-                    showWarningPopup(1);
-                } else if (examWarningCount === 2) {
-                    showWarningPopup(2);
-                } else if (examWarningCount >= MAX_WARNINGS) {
-                    closeWarningPopup();
-                    showProctoringAlert('❌ Maximum violations exceeded! Exam automatically submitted.');
-                    submitAssessment(examStep, true);
-                }
-            }
-        }
-    });
 
-    document.addEventListener('contextmenu', function(e) {
-        if (examActive && !$isAllDone) {
-            e.preventDefault();
-            showProctoringAlert('⚠️ Right-click is disabled during exam');
-            return false;
-        }
-    });
+                showSuccessMessage('✅ Lesson Completed! Proceeding to Pre-Assessment...');
+                setTimeout(() => goToStep(2), 2000);
+            } else { alert('Error completing lesson.'); }
+        })
+        .catch(err => console.error(err));
+    }
 
-    document.addEventListener('keydown', function(e) {
-        if (examActive && !$isAllDone) {
-            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key))) {
-                e.preventDefault();
-                showProctoringAlert('⚠️ Developer tools are disabled during exam');
-                return false;
-            }
-        }
-    });
+    function showSuccessMessage(message) {
+        const alert = document.createElement('div');
+        alert.className = 'proctoring-alert';
+        alert.style.background = '#00AA66';
+        alert.style.color = 'white';
+        alert.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+        document.body.appendChild(alert);
+        setTimeout(() => alert.remove(), 3000);
+    }
 
-    // ---------- Camera modal ----------
     function closeCameraModal() { document.getElementById('cameraModal').classList.remove('active'); }
     function requestCameraAccess() { closeCameraModal(); startFloatingCamera(); }
 
-    // ---------- Draggable camera ----------
     const floatingCamera = document.getElementById('floatingCamera');
     let isDragging = false;
     let initialX, initialY;
@@ -1313,7 +1356,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         document.addEventListener('mouseup', () => { isDragging = false; });
     }
 
-    // ---------- Congratulations modal ----------
+    // ---------- Congratulations Modal ----------
     function showCongratsModal() {
         const overlay = document.getElementById('congratsOverlay');
         if (!overlay) return;
@@ -1326,6 +1369,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     function closeCongratsModal() {
         const overlay = document.getElementById('congratsOverlay');
         if (overlay) overlay.classList.remove('active');
+        // Stay on same page — student can now click any completed tab to review
     }
 
     document.addEventListener('keydown', (e) => {
@@ -1339,7 +1383,10 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     document.addEventListener('DOMContentLoaded', () => {
         const firstAvailableStep = getFirstAvailableStep();
         if (firstAvailableStep) {
-            if ($isAllDone) showCongratsModal();
+            // If everything is done, show congrats
+            if ($isAllDone) {
+                showCongratsModal();
+            }
             proceedToStep(firstAvailableStep);
         } else {
             showCongratsModal();
@@ -1350,8 +1397,10 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         for (let step = 1; step <= 5; step++) {
             const btn = document.getElementById(`btn-step-${step}`);
             if (!btn) continue;
+            // Available (not disabled, not yet done) → take it
             if (!btn.classList.contains('disabled') && !btn.classList.contains('completed')) return step;
         }
+        // Nothing to take → return first completed step for review
         for (let step = 1; step <= 5; step++) {
             const btn = document.getElementById(`btn-step-${step}`);
             if (btn && btn.classList.contains('completed')) return step;
