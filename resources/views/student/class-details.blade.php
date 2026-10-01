@@ -886,10 +886,11 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     function showExamStartModal(step) {
-        const names = { 2: 'Pre-Assessment', 3: 'Post-Assessment', 5: 'Mini Quiz' };
-        // Convert seconds → minutes for the label
-        const secs  = { 2: preTimeLimit || 600, 3: postTimeLimit || 600, 5: quizTimeLimit || 300 };
-        const mins  = Math.max(1, Math.floor(secs[step] / 60));
+        if (![2, 3, 5].includes(step)) return;
+
+    const names = { 2: 'Pre-Assessment', 3: 'Post-Assessment', 5: 'Mini Quiz' };
+    const secs  = { 2: preTimeLimit || 600, 3: postTimeLimit || 600, 5: quizTimeLimit || 300 };
+    const mins  = Math.max(1, Math.floor(secs[step] / 60));
 
         document.getElementById('examStartSubtitle').textContent = names[step];
         document.getElementById('examTimeRequirement').innerHTML =
@@ -985,13 +986,20 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    }
+    return new Promise(resolve => {
+        if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+            resolve();
+            return;
+        }
+        mediaRecorder.onstop = () => resolve();
+        mediaRecorder.stop();
+    });
+}
 
-    function getVideoBlob() {
-        if (recordedChunks.length === 0) return null;
-        return new Blob(recordedChunks, { type: 'video/webm' });
-    }
+function getVideoBlob() {
+    if (!recordedChunks || recordedChunks.length === 0) return null;
+    return new Blob(recordedChunks, { type: 'video/webm' });
+}
 
     // ---------- Warning popups ----------
     function showWarningPopup(arg1, arg2) {
@@ -1118,38 +1126,38 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     // ---------- Step 1 complete ----------
-    function completeStep(step) {
-        if (step !== 1) return;
+   function completeStep(step) {
+    if (step !== 1) return;
 
-        const confirmBtn = event && event.target;
-        if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.6'; }
+    const confirmBtn = event && event.target;
+    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.6'; }
 
-        fetch('{{ route("student.lesson.complete") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ class_id: classId, subject_id: subjectId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                showSuccessMessage('✅ Lesson Completed! Proceeding to Pre-Assessment...');
-                // ✅ The reliable fix: reload so server re-computes $access and
-                // unlocks the Pre-Assessment button.
-                setTimeout(() => window.location.reload(), 1200);
-            } else {
-                alert('Error completing lesson.');
-                if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Network error while completing lesson.');
+    fetch('{{ route("student.lesson.complete") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ class_id: classId, subject_id: subjectId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showSuccessMessage('✅ Lesson Completed! Continuing to the next step…');
+            // Store the target so the reload lands on step 2 (and shows the exam modal)
+            sessionStorage.setItem('eduadapt:targetStep', '2');
+            setTimeout(() => window.location.reload(), 900);
+        } else {
+            alert('Error completing lesson.');
             if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
-        });
-    }
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Network error while completing lesson.');
+        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
+    });
+}
 
     // ---------- Assessment submit ----------
     function submitAssessment(step, autoSubmit = false) {
@@ -1166,7 +1174,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         const contentId   = contentIdMap[step];
 
         if (!contentType || !contentId) { alert('No assessment found.'); return; }
-
+ await stopRecording();
         const formData = new FormData();
         formData.append('content_type', contentType);
         formData.append('content_id', contentId);
@@ -1224,10 +1232,11 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     function closeScoreResultModal() {
-        document.getElementById('scoreResultOverlay').classList.remove('active');
-        // ✅ The reliable fix: reload so server recomputes $access and unlocks the next step.
-        window.location.reload();
-    }
+    document.getElementById('scoreResultOverlay').classList.remove('active');
+    const next = currentStep + 1;
+    if (next <= 5) sessionStorage.setItem('eduadapt:targetStep', String(next));
+    window.location.reload();
+}
 
     // ---------- Visibility / proctoring ----------
     document.addEventListener('visibilitychange', () => {
@@ -1336,27 +1345,83 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     });
 
     // ---------- Initialise ----------
-    document.addEventListener('DOMContentLoaded', () => {
-        const firstAvailableStep = getFirstAvailableStep();
-        if (firstAvailableStep) {
-            if ($isAllDone) showCongratsModal();
-            proceedToStep(firstAvailableStep);
+    // ---------- Initialise ----------
+document.addEventListener('DOMContentLoaded', () => {
+    // Priority 1 — explicit target set by the previous action (completeStep / submit)
+    let target = null;
+    const stored = sessionStorage.getItem('eduadapt:targetStep');
+    if (stored) {
+        sessionStorage.removeItem('eduadapt:targetStep');
+        const n = parseInt(stored, 10);
+        if (n >= 1 && n <= 5) target = n;
+    }
+
+    // Priority 2 — first step whose button is neither disabled nor completed
+    if (!target) target = getFirstAvailableStep();
+
+    if (!target) {
+        showCongratsModal();
+        return;
+    }
+
+    if ($isAllDone) showCongratsModal();
+
+    const btn = document.getElementById(`btn-step-${target}`);
+    const isExamStep = [2, 3, 5].includes(target);
+    const isCompleted = btn && btn.classList.contains('completed');
+    const isDisabled = btn && btn.classList.contains('disabled');
+
+    // If the target is somehow still locked (server hasn't updated), fall back
+    if (isDisabled) {
+        const fallback = getFirstAvailableStep();
+        if (fallback && fallback !== target) {
+            proceedToStep(fallback, fallback === target);
         } else {
             showCongratsModal();
         }
-    });
-
-    function getFirstAvailableStep() {
-        for (let step = 1; step <= 5; step++) {
-            const btn = document.getElementById(`btn-step-${step}`);
-            if (!btn) continue;
-            if (!btn.classList.contains('disabled') && !btn.classList.contains('completed')) return step;
-        }
-        for (let step = 1; step <= 5; step++) {
-            const btn = document.getElementById(`btn-step-${step}`);
-            if (btn && btn.classList.contains('completed')) return step;
-        }
-        return null;
+        return;
     }
+
+    // Assessment steps that aren't yet done → show the warning modal first
+    if (isExamStep && !isCompleted) {
+        pendingExamStep = target;
+        proceedToStep(target, /*viewOnly*/ true); // show content, do NOT start camera/timer
+        showExamStartModal(target);
+        return;
+    }
+
+    // Non-exam step, or an already-completed step → view-only
+    proceedToStep(target, isCompleted);
+});
+
+function getFirstAvailableStep() {
+    // First step that is not disabled and not completed
+    for (let step = 1; step <= 5; step++) {
+        const btn = document.getElementById(`btn-step-${step}`);
+        if (!btn) continue;
+        if (btn.classList.contains('disabled')) continue;
+        if (btn.classList.contains('completed')) continue;
+        return step;
+    }
+    // All done → return the last completed step (for view-only landing)
+    for (let step = 5; step >= 1; step--) {
+        const btn = document.getElementById(`btn-step-${step}`);
+        if (btn && btn.classList.contains('completed')) return step;
+    }
+    return null;
+}
+
+    // function getFirstAvailableStep() {
+    //     for (let step = 1; step <= 5; step++) {
+    //         const btn = document.getElementById(`btn-step-${step}`);
+    //         if (!btn) continue;
+    //         if (!btn.classList.contains('disabled') && !btn.classList.contains('completed')) return step;
+    //     }
+    //     for (let step = 1; step <= 5; step++) {
+    //         const btn = document.getElementById(`btn-step-${step}`);
+    //         if (btn && btn.classList.contains('completed')) return step;
+    //     }
+    //     return null;
+    // }
 </script>
 @endpush
