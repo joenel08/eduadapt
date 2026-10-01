@@ -587,7 +587,7 @@ class ClassController extends Controller
         return $score;
     }
 
-    // Optional: Get overall progress (used by AJAX)
+ 
     public function getProgress(Request $request)
     {
         $student = StudentProfile::where('user_id', Auth::id())->firstOrFail();
@@ -725,27 +725,27 @@ class ClassController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function getProgress(Request $request)
-    {
-        $student  = StudentProfile::where('user_id', Auth::id())->firstOrFail();
-        $classId  = $request->input('class_id');
-        $subjectId = $request->input('subject_id');
+    // public function getProgress(Request $request)
+    // {
+    //     $student  = StudentProfile::where('user_id', Auth::id())->firstOrFail();
+    //     $classId  = $request->input('class_id');
+    //     $subjectId = $request->input('subject_id');
 
-        if (!$classId) return response()->json(['percentage' => 0]);
+    //     if (!$classId) return response()->json(['percentage' => 0]);
 
-        $releases = ContentRelease::where('class_id', $classId)
-            ->when($subjectId, fn($q) => $q->where('subject_id', $subjectId))
-            ->get();
+    //     $releases = ContentRelease::where('class_id', $classId)
+    //         ->when($subjectId, fn($q) => $q->where('subject_id', $subjectId))
+    //         ->get();
 
-        $lessonMaterials = $this->extractContent($releases, 'learningMaterial');
-        $lessonMaterials = $this->attachProgress($lessonMaterials, $student);
+    //     $lessonMaterials = $this->extractContent($releases, 'learningMaterial');
+    //     $lessonMaterials = $this->attachProgress($lessonMaterials, $student);
 
-        $total     = $lessonMaterials->count();
-        $completed = $lessonMaterials->filter(fn($m) => in_array($m->progress, ['viewed', 'completed']))->count();
-        $percentage = $total > 0 ? round(($completed / $total) * 100) : 0;
+    //     $total     = $lessonMaterials->count();
+    //     $completed = $lessonMaterials->filter(fn($m) => in_array($m->progress, ['viewed', 'completed']))->count();
+    //     $percentage = $total > 0 ? round(($completed / $total) * 100) : 0;
 
-        return response()->json(['percentage' => $percentage]);
-    }
+    //     return response()->json(['percentage' => $percentage]);
+    // }
 
 
     private function resolveReleaseTypeKey(string $fullClass): string
