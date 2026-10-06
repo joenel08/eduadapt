@@ -10,6 +10,7 @@ class AdminProfile extends Model
         'user_id',
         'full_name',
         'email',
+        'profile_picture', 
     ];
 
     public function user()

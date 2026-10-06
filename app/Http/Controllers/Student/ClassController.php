@@ -84,6 +84,7 @@ class ClassController extends Controller
         // Fallback: non-pending is considered done
         return $status !== 'pending';
     }
+
     public function index()
     {
         $user = auth()->user();
@@ -145,6 +146,7 @@ class ClassController extends Controller
 
         return view('student.classes', compact('classes'));
     }
+
     // Show the class details page
     /**
      * Show the class details page for a specific subject.
@@ -188,7 +190,18 @@ class ClassController extends Controller
             ->where('subject_id', $subjectId)
             ->get();
 
-        // dd($releases->pluck('subject_id', 'id')->toArray());
+        // --- DEBUG (remove after verifying) ---
+        \Log::info('class-details debug', [
+            'class_id'   => $class->id,
+            'subject_id' => $subjectId,
+            'count'      => $releases->count(),
+            'rows'       => $releases->map(fn($r) => [
+                'id'           => $r->id,
+                'content_type' => $r->content_type,
+                'content_id'   => $r->content_id,
+            ])->toArray(),
+        ]);
+        // --- /DEBUG ---
 
         $studentProgress = StudentContentProgress::where('student_profile_id', $student->id)
             ->get()
@@ -205,25 +218,10 @@ class ClassController extends Controller
         $interventionVideos    = $this->extractContent($releases, 'interventionVideo');
         $interventionQuiz      = $this->extractContent($releases, 'interventionQuiz')->first();
 
-        // Parse time limits
-        $preTimeLimit = null;
-        if ($preAssessment && isset($preAssessment->settings['timer'])) {
-            $parts = explode(':', $preAssessment->settings['timer']);
-            $preTimeLimit = (int)$parts[0] * 60 + (int)$parts[1];
-        }
-        $postTimeLimit = null;
-        if ($postAssessment && isset($postAssessment->settings['timer'])) {
-            $parts = explode(':', $postAssessment->settings['timer']);
-            $postTimeLimit = (int)$parts[0] * 60 + (int)$parts[1];
-        }
-        $quizTimeLimit = null;
-        if ($interventionQuiz && isset($interventionQuiz->settings['timer'])) {
-            $parts = explode(':', $interventionQuiz->settings['timer']);
-            $quizTimeLimit = (int)$parts[0] * 60 + (int)$parts[1];
-        }
-        $preTimeLimit = $preTimeLimit ?? 10;
-        $postTimeLimit = $postTimeLimit ?? 10;
-        $quizTimeLimit = $quizTimeLimit ?? 5;
+        // Parse time limits (handles "10", "600", "10:00", "00:10", "1:10:00")
+        $preTimeLimit  = $this->timerToSeconds($preAssessment->settings['timer']  ?? null, 600);
+        $postTimeLimit = $this->timerToSeconds($postAssessment->settings['timer'] ?? null, 600);
+        $quizTimeLimit = $this->timerToSeconds($interventionQuiz->settings['timer'] ?? null, 300);
 
         // Attach progress
         $lessonMaterials = $this->attachProgress($lessonMaterials, $student);
@@ -280,20 +278,38 @@ class ClassController extends Controller
      * Extract content items from releases based on the content_type key.
      * Uses the $contentTypeMap to resolve the actual model class.
      *
+     * Tolerant to variations in content_type:
+     *   'learningMaterial', 'LearningMaterial', 'learning_material',
+     *   'App\Models\ContentItem', 'ContentItem', 'content_item', etc.
+     *
      * @param \Illuminate\Support\Collection $releases
      * @param string $typeKey The short type (e.g., 'learningMaterial')
      * @return \Illuminate\Support\Collection
      */
     private function extractContent($releases, $typeKey)
     {
-        // Get the corresponding model class from the map
         $modelClass = $this->contentTypeMap[$typeKey] ?? null;
         if (!$modelClass) {
             return collect();
         }
 
-        // Filter releases by content_type matching the map key
-        $ids = $releases->filter(fn($r) => $r->content_type === $typeKey)
+        $normalise = function ($s) {
+            $s = strtolower((string) $s);
+            // strip namespace
+            if (str_contains($s, '\\')) {
+                $s = substr($s, strrpos($s, '\\') + 1);
+            }
+            // remove non-alphanumerics so 'learning_material' == 'learningmaterial'
+            return preg_replace('/[^a-z0-9]/', '', $s);
+        };
+
+        $targetKey   = $normalise($typeKey);
+        $targetClass = $normalise(class_basename($modelClass));
+
+        $ids = $releases->filter(function ($r) use ($normalise, $targetKey, $targetClass) {
+                $ct = $normalise($r->content_type);
+                return $ct === $targetKey || $ct === $targetClass;
+            })
             ->pluck('content_id')
             ->unique()
             ->values();
@@ -302,7 +318,6 @@ class ClassController extends Controller
             return collect();
         }
 
-        // Load the actual models
         return $modelClass::whereIn('id', $ids)->get();
     }
 
@@ -368,10 +383,11 @@ class ClassController extends Controller
 
         return response()->json(['success' => true]);
     }
+
     private function areAllCompleted($items)
     {
         if ($items->isEmpty()) return true;
-        
+
         return $items->every(fn($item) => in_array($item->progress, ['viewed', 'completed']));
     }
 
@@ -556,6 +572,7 @@ class ClassController extends Controller
             ], 500);
         }
     }
+
     // Private scoring method (handles multiple choice, true/false, matching)
     private function calculateScore($assessment, $submittedAnswers)
     {
@@ -588,7 +605,6 @@ class ClassController extends Controller
         return $score;
     }
 
- 
     public function getProgress(Request $request)
     {
         $student = StudentProfile::where('user_id', Auth::id())->firstOrFail();
@@ -610,6 +626,7 @@ class ClassController extends Controller
 
         return response()->json(['percentage' => $percentage]);
     }
+
     public function completeLesson(Request $request)
     {
         $request->validate([
@@ -737,5 +754,45 @@ class ClassController extends Controller
             InterventionQuiz::class      => 'interventionQuiz',
             default                       => '',
         };
+    }
+
+    /**
+     * Normalise a timer setting to seconds.
+     * Accepts: int seconds, "600", "MM:SS", "HH:MM:SS".
+     * Special case: "00:10" is treated as 10 minutes (common form-saving bug),
+     * unless it's "00:00:10" which is genuinely 10 seconds.
+     */
+    private function timerToSeconds($value, int $defaultSeconds = 600): int
+    {
+        if ($value === null || $value === '') {
+            return $defaultSeconds;
+        }
+
+        // Already seconds (int or numeric string)
+        if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+            return max(1, (int) $value);
+        }
+
+        if (is_string($value) && str_contains($value, ':')) {
+            $parts = array_map('intval', explode(':', $value));
+
+            // HH:MM:SS — unambiguous
+            if (count($parts) === 3) {
+                $secs = $parts[0] * 3600 + $parts[1] * 60 + $parts[2];
+                return max(1, $secs);
+            }
+
+            // MM:SS — but "00:10" from a broken form is actually 10 minutes.
+            if (count($parts) === 2) {
+                [$a, $b] = $parts;
+                if ($a === 0 && $b > 0) {
+                    // Treat "00:10" as 10 minutes
+                    return max(60, $b * 60);
+                }
+                return max(1, $a * 60 + $b);
+            }
+        }
+
+        return $defaultSeconds;
     }
 }

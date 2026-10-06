@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\SubjectController;
 use App\Http\Controllers\Admin\ReportPerSchoolYearController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\ProfileController;
 
 
 
@@ -79,3 +80,12 @@ Route::put('/user-management/student/{id}', [UserManagementController::class, 'u
 Route::put('/user-management/teacher/{id}', [UserManagementController::class, 'updateTeacher'])->name('user-management.update-teacher');
 Route::post('/user-management/student/{id}/reset-password', [UserManagementController::class, 'resetStudentPassword'])->name('user-management.reset-student-password');
 Route::post('/user-management/teacher/{id}/reset-password', [UserManagementController::class, 'resetTeacherPassword'])->name('user-management.reset-teacher-password');
+
+
+
+Route::prefix('profile')->name('profile.')->group(function () {
+    Route::get('/',        [ProfileController::class, 'index'])         ->name('index');
+    Route::put('/update',  [ProfileController::class, 'updateProfile']) ->name('update');
+    Route::post('/picture',[ProfileController::class, 'updatePicture']) ->name('picture');
+    Route::put('/password',[ProfileController::class, 'updatePassword'])->name('password');
+});

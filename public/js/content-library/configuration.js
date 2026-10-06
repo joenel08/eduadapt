@@ -77,8 +77,8 @@
 
         classes.forEach(cls => {
             const release = releases[cls.id] || {};
-            const rDate = release.release_date ? new Date(release.release_date).toISOString().slice(0, 16) : '';
-            const dDate = release.due_date ? new Date(release.due_date).toISOString().slice(0, 16) : '';
+            const rDate = window.utcIsoToLocalInput(release.release_date);
+            const dDate = window.utcIsoToLocalInput(release.due_date);
             html += `
                 <tr>
                     <td style="padding:8px; border:1px solid #ddd;">

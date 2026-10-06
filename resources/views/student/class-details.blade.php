@@ -21,16 +21,32 @@
     {{ $selectedSubject->name ?? 'General' }} — Learning Path
 </p>
 
-@if($lessonMaterials->isEmpty() && !$preAssessment && !$postAssessment && $interventionMaterials->isEmpty() && $interventionVideos->isEmpty() && !$interventionQuiz)
+@php
+    // Has the teacher released anything at all for this subject?
+    $hasContent = !(
+        $lessonMaterials->isEmpty()
+        && !$preAssessment
+        && !$postAssessment
+        && $interventionMaterials->isEmpty()
+        && $interventionVideos->isEmpty()
+        && !$interventionQuiz
+    );
+
+    // Only "all done" if there was actually content to begin with.
+    $allDone = $hasContent
+        && $access['materials_done']
+        && $access['pre_done']
+        && $access['post_done']
+        && $access['intervention_materials_done']
+        && $access['quiz_done'];
+@endphp
+
+@if(!$hasContent)
 <div class="lesson-placeholder">
     <i class="fas fa-file-lines"></i>
     <p>No content available for this subject yet.</p>
 </div>
 @else
-
-@php
-    $allDone = $access['materials_done'] && $access['pre_done'] && $access['post_done'] && $access['intervention_materials_done'] && $access['quiz_done'];
-@endphp
 
 <div class="due-date-section" id="dueDateSection">
     <div class="due-date-text">
@@ -800,6 +816,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     const postTimeLimit = {{ $postTimeLimit }};
     const quizTimeLimit = {{ $quizTimeLimit }};
     const $isAllDone    = {{ $allDone ? 'true' : 'false' }};
+    const $hasContent   = {{ $hasContent ? 'true' : 'false' }};
 
     // ---------- State ----------
     let currentStep = 1;
@@ -1154,7 +1171,6 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
     }
 
     // ---------- Assessment submit ----------
-    // ✅ FIX: made async because we await stopRecording() before reading the blob
     async function submitAssessment(step, autoSubmit = false) {
         const containerId = step === 'pre' ? 'preAssessmentContainer'
                         : step === 'post' ? 'postAssessmentContainer'
@@ -1345,6 +1361,12 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
 
     // ---------- Initialise ----------
     document.addEventListener('DOMContentLoaded', () => {
+        // If the content block didn't render (no content released),
+        // there are no step buttons — do NOT show congrats, do nothing.
+        if (!$hasContent || !document.querySelector('.filter-btn')) {
+            return;
+        }
+
         let target = null;
         const stored = sessionStorage.getItem('eduadapt:targetStep');
         if (stored) {
@@ -1356,7 +1378,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
         if (!target) target = getFirstAvailableStep();
 
         if (!target) {
-            showCongratsModal();
+            if ($isAllDone) showCongratsModal();
             return;
         }
 
@@ -1371,7 +1393,7 @@ window.CLASSES_URL = "{{ route('student.classes') }}";
             const fallback = getFirstAvailableStep();
             if (fallback && fallback !== target) {
                 proceedToStep(fallback, fallback === target);
-            } else {
+            } else if ($isAllDone) {
                 showCongratsModal();
             }
             return;

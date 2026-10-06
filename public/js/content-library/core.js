@@ -75,32 +75,49 @@
     };
 
 
-    // ===== Ensure window.showToast always exists =====
-(function ensureToast() {
-    // 1) If style.js declared a global `showToast` and it's reachable, expose it on window.
-    try {
-        if (typeof showToast === 'function' && !window.showToast) {
-            window.showToast = showToast;
-        }
-    } catch (e) { /* not in scope, ignore */ }
-
-    // 2) If it's already on window, nothing to do.
-    if (typeof window.showToast === 'function') return;
-
-    // 3) Fallback: minimal toast that mirrors style.js visuals.
-    window.showToast = function (message, isError = false) {
-        const el = document.createElement('div');
-        el.className = 'message-box';
-        el.style.background = isError ? '#ffe4e6' : '#eef2ff';
-        el.style.color = isError ? '#991b1b' : '#1d4ed8';
-        el.textContent = message;
-
-        const host = document.querySelector('.content') || document.body;
-        host.prepend(el);
-
-        setTimeout(() => el.remove(), 4500);
+    window.utcIsoToLocalInput = function (iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+            + `T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
-})();
+
+    // Convert a datetime-local value ("2026-10-06T10:00") → UTC ISO for the server
+    window.localInputToUtcIso = function (value) {
+        if (!value) return null;
+        const d = new Date(value);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString();
+    };
+
+    // ===== Ensure window.showToast always exists =====
+    (function ensureToast() {
+        // 1) If style.js declared a global `showToast` and it's reachable, expose it on window.
+        try {
+            if (typeof showToast === 'function' && !window.showToast) {
+                window.showToast = showToast;
+            }
+        } catch (e) { /* not in scope, ignore */ }
+
+        // 2) If it's already on window, nothing to do.
+        if (typeof window.showToast === 'function') return;
+
+        // 3) Fallback: minimal toast that mirrors style.js visuals.
+        window.showToast = function (message, isError = false) {
+            const el = document.createElement('div');
+            el.className = 'message-box';
+            el.style.background = isError ? '#ffe4e6' : '#eef2ff';
+            el.style.color = isError ? '#991b1b' : '#1d4ed8';
+            el.textContent = message;
+
+            const host = document.querySelector('.content') || document.body;
+            host.prepend(el);
+
+            setTimeout(() => el.remove(), 4500);
+        };
+    })();
 
     // ===== Styled Confirmation Modal =====
     (function injectConfirmModalStyles() {
@@ -1016,8 +1033,8 @@
             .then(data => {
                 if (data.success) {
                     const pkg = data.package || {};
-                    document.getElementById('lpReleaseDate').value = pkg.release_date || '';
-                    document.getElementById('lpDueDate').value = pkg.due_date || '';
+                    document.getElementById('lpReleaseDate').value = window.utcIsoToLocalInput(pkg.release_date);
+                    document.getElementById('lpDueDate').value = window.utcIsoToLocalInput(pkg.due_date);
                     document.getElementById('lpStatus').value = pkg.status || 'draft';
 
                     const availableClasses = data.available_classes || [];
@@ -1033,15 +1050,15 @@
     };
 
     window.buildLearningPackageFromForm = function () {
-        const assigned = [];
-        document.querySelectorAll('input[name="lpAssignedClass"]:checked').forEach(cb => assigned.push(parseInt(cb.value)));
-        return {
-            assigned_classes: assigned,
-            releaseDate: document.getElementById('lpReleaseDate').value,
-            dueDate: document.getElementById('lpDueDate').value,
-            status: document.getElementById('lpStatus').value
-        };
+    const assigned = [];
+    document.querySelectorAll('input[name="lpAssignedClass"]:checked').forEach(cb => assigned.push(parseInt(cb.value)));
+    return {
+        assigned_classes: assigned,
+        releaseDate: window.localInputToUtcIso(document.getElementById('lpReleaseDate').value),
+        dueDate:     window.localInputToUtcIso(document.getElementById('lpDueDate').value),
+        status: document.getElementById('lpStatus').value
     };
+};
 
     window.saveLearningPackageDraft = function () {
         const key = window.getCurrentContentKey();

@@ -174,6 +174,12 @@
         <a href="{{ route('admin.report-per-school-year') }}" data-page="report-per-school-year" class="{{ request()->routeIs('admin.report-per-school-year') ? 'active' : '' }}">
             <i class="fas fa-list"></i><span>Report</span>
         </a>
+
+        <a href="{{ route('admin.profile.index') }}" data-page="report-per-school-year" class="{{ request()->routeIs('admin.profile.index') ? 'active' : '' }}">
+            <i class="fas fa-user-cog"></i><span>Profile</span>
+        </a>
+
+        
     </nav>
 
     <div class="sidebar-footer">
